@@ -1,0 +1,90 @@
+# =============================================================================
+# molecular_docking - Conda Environment
+# =============================================================================
+#
+# Creates a complete environment with all dependencies for the
+# molecular_docking pipeline.
+#
+# INSTALLATION:
+#   # Create environment:
+#   conda env create -f environment.yaml
+#
+#   # Activate:
+#   conda activate molecular_docking
+#
+#   # Install the package in development mode:
+#   pip install -e ".[dev]"
+#
+#   # Verify:
+#   bash check_dependencies.sh
+#
+# UPDATE:
+#   conda env update -f environment.yaml --prune
+#
+# NOTES:
+#   - RDKit, OpenBabel, and AmberTools MUST come from conda-forge.
+#     They have C/C++/Fortran dependencies that pip cannot handle.
+#   - dimorphite_dl is pip-only (not on conda-forge).
+#   - DOCK6 requires a separate academic license from UCSF:
+#     https://dock.compbio.ucsf.edu/DOCK_6/index.htm
+#     It is NOT included in this environment.
+#   - Tested on Linux x86_64 (Ubuntu 22.04/24.04, CentOS 7/8).
+#     macOS should work but is less tested.
+#     Windows: use WSL2.
+#
+# =============================================================================
+
+name: molecular_docking
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  # --- Python ---
+  - python>=3.9,<3.13
+
+  # --- Core scientific stack ---
+  - pandas>=1.5
+  - numpy>=1.23
+  - scipy>=1.9
+  - openpyxl>=3.0
+
+  # --- Configuration ---
+  - pyyaml>=6.0
+
+  # --- Cheminformatics (conda-forge only) ---
+  - rdkit>=2023.03.1
+  - openbabel>=3.1.1
+
+  # --- Molecular dynamics / ligand preparation ---
+  # AmberTools provides: antechamber, parmchk2, tleap, reduce, cpptraj
+  # Required for AM1-BCC charge calculation and mol2 generation
+  - ambertools>=22.0
+
+  # --- Visualization (optional but useful) ---
+  - matplotlib>=3.6
+  - seaborn>=0.12
+
+  # --- Testing ---
+  - pytest>=7.0
+  - pytest-cov>=4.0
+
+  # --- Utilities ---
+  - tqdm>=4.64
+  - lxml>=4.9
+
+  # --- pip-only packages ---
+  - pip
+  - pip:
+      # Protonation at specific pH (pKa-based)
+      # Uses function API: from dimorphite_dl import protonate_smiles
+      - dimorphite_dl>=1.3.2
+
+      # Receptor protonation with PROPKA (pH-aware pKa prediction)
+      # Optional: only needed if receptor.protonation.enabled=true
+      - pdb2pqr>=3.6.0
+
+      # Install this package in development mode
+      # (uncomment if you want auto-install on env create)
+      # - -e .

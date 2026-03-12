@@ -1,0 +1,115 @@
+# =============================================================================
+# molecular_docking - pyproject.toml
+# =============================================================================
+# Modern Python packaging configuration.
+#
+# Install in development mode:
+#   pip install -e ".[dev]"
+#
+# Install for production:
+#   pip install .
+#
+# NOTE: RDKit, OpenBabel, and AmberTools are best installed via conda
+#       (see environment.yaml). pip install only covers pure-Python deps.
+#
+# DOCK6 requires a separate academic license from UCSF:
+#   https://dock.compbio.ucsf.edu/DOCK_6/index.htm
+# =============================================================================
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+# -----------------------------------------------------------------------------
+# Project metadata
+# -----------------------------------------------------------------------------
+[project]
+name = "molecular_docking"
+version = "1.0.0"
+description = "Generic DOCK6 molecular docking pipeline. Produces outputs compatible with dock2profile."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Environ Bio"},
+]
+keywords = [
+    "molecular-docking",
+    "dock6",
+    "drug-discovery",
+    "virtual-screening",
+    "computational-chemistry",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+]
+
+# --- Core dependencies (pip-installable) ---
+dependencies = [
+    "pandas>=1.5.0",
+    "numpy>=1.23.0",
+    "openpyxl>=3.0.0",
+    "pyyaml>=6.0",
+]
+
+# --- Optional dependency groups ---
+[project.optional-dependencies]
+# Protonation tools (pip-installable)
+protonation = [
+    "dimorphite_dl>=1.3.2",
+    "pdb2pqr>=3.6.0",
+]
+# Testing
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+# Documentation
+docs = [
+    "sphinx>=7.0",
+    "sphinx-rtd-theme>=2.0",
+]
+
+[project.urls]
+Repository = "https://github.com/environ-bio/molecular_docking"
+Documentation = "https://github.com/environ-bio/molecular_docking/blob/main/docs/ARCHITECTURE.md"
+
+# -----------------------------------------------------------------------------
+# Setuptools configuration
+# -----------------------------------------------------------------------------
+[tool.setuptools.packages.find]
+where = ["01_src"]
+
+[tool.setuptools.package-dir]
+"" = "01_src"
+
+# -----------------------------------------------------------------------------
+# Pytest
+# -----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+# -----------------------------------------------------------------------------
+# Ruff (linting, optional)
+# -----------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]  # line length handled by formatter

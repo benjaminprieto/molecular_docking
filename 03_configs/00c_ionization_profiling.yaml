@@ -1,0 +1,83 @@
+# =============================================================================
+# 00c Ionization Profiling - Configuration
+# =============================================================================
+# Protona moléculas al pH de docking usando ionprofile.
+# Genera SDF individuales protonados + Excel/CSV con perfiles de carga.
+#
+# REVISIÓN MANUAL: El usuario revisa los outputs antes de 00d.
+#   - ionization_profiling.csv/xlsx → perfiles de carga por pH
+#   - structures/pH72/*.sdf         → SDF protonados con 3D
+#
+# Engines disponibles:
+#   openbabel   → rápido, ~20 reglas pKa (ms/mol)
+#   dimorphite  → más preciso, SMARTS/pKa database (ms/mol)
+#   qupkake     → ML+QM, RMSE 0.5-0.8 (min/mol, requiere GPU)
+#
+# INPUT: 05_results/{campaign_id}/00a_molecule_parser/unique_molecules.csv
+# OUTPUT: 05_results/{campaign_id}/00c_ionization_profiling/{run_id}/
+#
+# Project: molecular_docking
+# Module: 00c
+# Version: 2.0
+# =============================================================================
+
+parameters:
+  # Engine de protonación (override de campaign_config si se especifica)
+  # null = usar campaign_config.molecules.protonation.engine
+  engine: null
+
+  # Extender el gradiente de pH alrededor del docking_ph
+  # null    → solo el pH exacto del campaign_config
+  # 0.5     → docking_ph ± 0.5 (e.g., 7.2 → 6.7-7.7)
+  # 1.0     → docking_ph ± 1.0 (e.g., 7.2 → 6.2-8.2)
+  ph_range: null
+
+  # Step entre valores de pH (default 0.1)
+  ph_step: 0.1
+
+  # Precisión del engine (para dimorphite: tamaño ventana pKa)
+  precision: 0.5
+
+  # Formatos de salida
+  # csv:   tabla con Q_pH y SMILES_pH por columna
+  # excel: igual pero con formato y colores
+  # sdf:   SDF individuales por molécula por pH (para 00d)
+  output_formats:
+    - csv
+    - excel
+    - sdf
+
+  # Log level
+  log_level: "INFO"
+
+# -----------------------------------------------------------------------------
+# OUTPUT
+# -----------------------------------------------------------------------------
+outputs:
+  subdir: "00c_ionization_profiling"
+
+  # Archivos generados:
+  #   {run_id}/ionization_profiling.csv     -> tabla completa
+  #   {run_id}/ionization_profiling.xlsx    -> Excel con formato
+  #   {run_id}/structures/pH72/*.sdf        -> SDF individuales (input para 00d)
+  #   00c_ionization_profiling.log          -> log completo
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/00c_ionization_profiling.py \
+#     --config 03_configs/00c_ionization_profiling.yaml \
+#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#
+# # Múltiples pH:
+# python 02_scripts/00c_ionization_profiling.py \
+#     --config 03_configs/00c_ionization_profiling.yaml \
+#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml \
+#     --ph 7.2 6.3
+#
+# # Override engine:
+# python 02_scripts/00c_ionization_profiling.py \
+#     --config 03_configs/00c_ionization_profiling.yaml \
+#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml \
+#     --engine dimorphite
+# =============================================================================
