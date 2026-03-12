@@ -1,0 +1,101 @@
+# =============================================================================
+# 01b DOCK6 Run - Configuration
+# =============================================================================
+# Ejecuta DOCK6 flexible/rigid docking para cada ligando preparado.
+#
+# DOCK6 scoring: grid-based energy (van der Waals + electrostatic)
+# Anchor-and-grow flexible docking con simplex minimization.
+#
+# INPUT:
+#   - 05_results/{campaign_id}/00c_ligand_preparation/mol2/*.mol2
+#   - Grids: campaign_config.grids.grid_dir (pre-existentes o de 01a)
+#
+# OUTPUT: 05_results/{campaign_id}/01b_dock6_run/
+#
+# PARAMETROS DE DOCK6:
+#   Estos parametros se pasan directamente al template de dock6.in.
+#   Para entender cada uno, ver el DOCK 6 Manual:
+#   https://dock.compbio.ucsf.edu/DOCK_6/dock6_manual.htm
+#
+# Project: molecular_docking
+# Module: 01b
+# Version: 1.0
+# =============================================================================
+
+parameters:
+  # --- Metodo de busqueda conformacional ---
+  # "flex"   -> anchor-and-grow (estandar, recomendado para drug-like)
+  # "rigid"  -> rigid body (solo orientacion sin flexibilidad)
+  search_method: "flex"
+
+  # --- Flex-specific: anchor-and-grow ---
+  min_anchor_size: 5                      # Min heavy atoms para anchor
+  pruning_max_orients: 1000               # Orientaciones a evaluar por capa
+  pruning_clustering_cutoff: 100          # RMSD clustering cutoff
+  pruning_conformer_score_cutoff: 100.0   # Score cutoff para poda
+
+  # --- Orientacion ---
+  max_orientations: 1000                  # Orientaciones maximas a probar
+
+  # --- Minimizacion (simplex) ---
+  minimize: true
+  simplex_max_iterations: 500
+  simplex_max_cycles: 1
+  simplex_score_converge: 0.1
+  simplex_cycle_converge: 1.0
+  simplex_trans_step: 1.0                 # Translation step (Angstroms)
+  simplex_rot_step: 0.1                   # Rotation step (radians)
+  simplex_tors_step: 10.0                 # Torsion step (degrees)
+
+  # --- Output ---
+  num_scored_conformers: 20               # Poses a escribir por molecula
+  write_orientations: false               # Escribir orientaciones pre-minim
+
+  # --- Ejecucion ---
+  timeout_per_molecule: 600               # Segundos (10 min)
+                                          # Moleculas grandes pueden necesitar mas
+
+  # Log level
+  log_level: "INFO"
+
+# -----------------------------------------------------------------------------
+# OUTPUT
+# -----------------------------------------------------------------------------
+outputs:
+  subdir: "01b_dock6_run"
+
+  # Archivos generados por molecula:
+  #   {name}/dock6.in                -> input file de DOCK6
+  #   {name}/dock6.out               -> log de DOCK6
+  #   {name}/{name}_scored.mol2      -> poses scored
+  #
+  # Archivos globales:
+  #   docking_status.csv             -> status por molecula
+  #   docking_summary.txt            -> resumen legible
+  #   01b_dock6_run.log              -> log completo
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/01b_dock6_run.py \
+#     --config 03_configs/01b_dock6_run.yaml \
+#     --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml
+#
+# # Solo una molecula:
+# python 02_scripts/01b_dock6_run.py \
+#     --config 03_configs/01b_dock6_run.yaml \
+#     --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml \
+#     --name MolPort-047-542-199
+#
+# # Dry run (generar inputs sin ejecutar):
+# python 02_scripts/01b_dock6_run.py \
+#     --config 03_configs/01b_dock6_run.yaml \
+#     --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml \
+#     --dry-run
+#
+# # Override metodo y orientaciones:
+# python 02_scripts/01b_dock6_run.py \
+#     --config 03_configs/01b_dock6_run.yaml \
+#     --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml \
+#     --method rigid --orientations 500
+# =============================================================================

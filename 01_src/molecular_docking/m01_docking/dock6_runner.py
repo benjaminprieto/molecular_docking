@@ -1,0 +1,695 @@
+"""
+DOCK6 Runner - Core Module (01b)
+==================================
+Genera input files de DOCK6 y ejecuta docking para cada ligando preparado.
+
+Soporta:
+  - Flexible ligand docking (anchor-and-grow)
+  - Rigid ligand docking
+  - Grid-based scoring (vdW + electrostatic)
+  - Simplex minimization
+
+Pipeline por molecula:
+    1. Localizar mol2 preparado (de 00c)
+    2. Generar dock6.in con parametros
+    3. Ejecutar dock6 -i dock6.in -o dock6.out
+    4. Verificar output ({name}_scored.mol2)
+
+Input:
+  - mol2 individuales (de 00c: 00c_ligand_preparation/mol2/{name}.mol2)
+  - Grids DOCK6 (pre-existentes o de 01a)
+  - selected_spheres.sph
+
+Output (por molecula):
+  - {name}/dock6.in
+  - {name}/dock6.out
+  - {name}/{name}_scored.mol2
+
+Output (global):
+  - docking_status.csv
+
+Location: 01_src/molecular_docking/m01_docking/dock6_runner.py
+Project: molecular_docking
+Module: 01b (core)
+Version: 1.0
+"""
+
+import logging
+import os
+import subprocess
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional, Any, Union
+
+import pandas as pd
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# DOCK6 INPUT TEMPLATES
+# =============================================================================
+
+DOCK6_FLEX_TEMPLATE = """\
+conformer_search_type                                        flex
+user_specified_anchor                                        no
+limit_max_anchors                                            no
+min_anchor_size                                              {min_anchor_size}
+pruning_use_clustering                                       yes
+pruning_max_orients                                          {pruning_max_orients}
+pruning_clustering_cutoff                                    {pruning_clustering_cutoff}
+pruning_conformer_score_cutoff                               {pruning_conformer_score_cutoff}
+pruning_conformer_score_scaling_factor                       1.0
+use_clash_overlap                                            no
+write_growth_tree                                            no
+use_internal_energy                                          yes
+internal_energy_rep_exp                                      12
+internal_energy_cutoff                                       100.0
+ligand_atom_file                                             {ligand_mol2}
+limit_max_ligands                                            no
+skip_molecule                                                no
+read_mol_solvation                                           no
+calculate_rmsd                                               no
+use_database_filter                                          no
+orient_ligand                                                yes
+automated_matching                                           yes
+receptor_site_file                                           {spheres_file}
+max_orientations                                             {max_orientations}
+critical_points                                              no
+chemical_matching                                            no
+use_ligand_spheres                                           no
+bump_filter                                                  no
+score_molecules                                              yes
+contact_score_primary                                        no
+contact_score_secondary                                      no
+grid_score_primary                                           yes
+grid_score_secondary                                         no
+grid_score_rep_rad_scale                                     1
+grid_score_vdw_scale                                         1
+grid_score_es_scale                                          1
+grid_score_grid_prefix                                       {grid_prefix}
+multigrid_score_secondary                                    no
+dock3.5_score_secondary                                      no
+continuous_score_secondary                                   no
+footprint_similarity_score_secondary                         no
+pharmacophore_score_secondary                                no
+descriptor_score_secondary                                   no
+gbsa_zou_score_secondary                                     no
+gbsa_hawkins_score_secondary                                 no
+SASA_score_secondary                                         no
+amber_score_secondary                                        no
+minimize_ligand                                              {minimize}
+simplex_max_iterations                                       {simplex_max_iterations}
+simplex_tors_premin_iterations                               0
+simplex_max_cycles                                           {simplex_max_cycles}
+simplex_score_converge                                       {simplex_score_converge}
+simplex_cycle_converge                                       {simplex_cycle_converge}
+simplex_trans_step                                           {simplex_trans_step}
+simplex_rot_step                                             {simplex_rot_step}
+simplex_tors_step                                            {simplex_tors_step}
+simplex_random_seed                                          0
+simplex_restraint_min                                        no
+atom_model                                                   all
+vdw_defn_file                                                {vdw_defn_file}
+flex_defn_file                                               {flex_defn_file}
+flex_drive_file                                              {flex_drive_file}
+ligand_outfile_prefix                                        {output_prefix}
+write_orientations                                           {write_orientations}
+num_scored_conformers                                        {num_scored_conformers}
+rank_ligands                                                 no
+"""
+
+DOCK6_RIGID_TEMPLATE = """\
+conformer_search_type                                        rigid
+use_internal_energy                                          yes
+internal_energy_rep_exp                                      12
+internal_energy_cutoff                                       100.0
+ligand_atom_file                                             {ligand_mol2}
+limit_max_ligands                                            no
+skip_molecule                                                no
+read_mol_solvation                                           no
+calculate_rmsd                                               no
+use_database_filter                                          no
+orient_ligand                                                yes
+automated_matching                                           yes
+receptor_site_file                                           {spheres_file}
+max_orientations                                             {max_orientations}
+critical_points                                              no
+chemical_matching                                            no
+use_ligand_spheres                                           no
+bump_filter                                                  no
+score_molecules                                              yes
+contact_score_primary                                        no
+contact_score_secondary                                      no
+grid_score_primary                                           yes
+grid_score_secondary                                         no
+grid_score_rep_rad_scale                                     1
+grid_score_vdw_scale                                         1
+grid_score_es_scale                                          1
+grid_score_grid_prefix                                       {grid_prefix}
+multigrid_score_secondary                                    no
+dock3.5_score_secondary                                      no
+continuous_score_secondary                                   no
+footprint_similarity_score_secondary                         no
+pharmacophore_score_secondary                                no
+descriptor_score_secondary                                   no
+gbsa_zou_score_secondary                                     no
+gbsa_hawkins_score_secondary                                 no
+SASA_score_secondary                                         no
+amber_score_secondary                                        no
+minimize_ligand                                              {minimize}
+simplex_max_iterations                                       {simplex_max_iterations}
+simplex_max_cycles                                           {simplex_max_cycles}
+simplex_score_converge                                       {simplex_score_converge}
+simplex_cycle_converge                                       {simplex_cycle_converge}
+simplex_trans_step                                           {simplex_trans_step}
+simplex_rot_step                                             {simplex_rot_step}
+simplex_tors_step                                            {simplex_tors_step}
+simplex_random_seed                                          0
+simplex_restraint_min                                        no
+atom_model                                                   all
+vdw_defn_file                                                {vdw_defn_file}
+flex_defn_file                                               {flex_defn_file}
+flex_drive_file                                              {flex_drive_file}
+ligand_outfile_prefix                                        {output_prefix}
+write_orientations                                           {write_orientations}
+num_scored_conformers                                        {num_scored_conformers}
+rank_ligands                                                 no
+"""
+
+
+# =============================================================================
+# DOCK6 PARAMETER FILE DISCOVERY
+# =============================================================================
+
+def find_dock6_params() -> Dict[str, str]:
+    """
+    Find DOCK6 parameter files (vdw_AMBER_parm99.defn, flex.defn, flex_drive.tbl).
+
+    Search order:
+      1. $DOCK_HOME/parameters/
+      2. $DOCK6_HOME/parameters/
+      3. $DOCK_BASE/parameters/
+      4. Relative to dock6 binary: dirname(which dock6)/../parameters/
+      5. Common install paths
+
+    Returns:
+        Dict with keys: vdw_defn_file, flex_defn_file, flex_drive_file
+        Values are absolute paths if found, bare filenames otherwise.
+    """
+    param_files = {
+        "vdw_defn_file": "vdw_AMBER_parm99.defn",
+        "flex_defn_file": "flex.defn",
+        "flex_drive_file": "flex_drive.tbl",
+    }
+
+    search_paths = []
+
+    # Environment variables
+    for var in ["DOCK_HOME", "DOCK6_HOME", "DOCK_BASE"]:
+        val = os.environ.get(var)
+        if val:
+            search_paths.append(Path(val) / "parameters")
+
+    # Relative to dock6 binary
+    try:
+        dock6_which = subprocess.run(
+            ["which", "dock6"], capture_output=True, text=True, timeout=5,
+        ).stdout.strip()
+        if dock6_which:
+            # dock6 at /path/to/dock6/bin/dock6 -> parameters at /path/to/dock6/parameters/
+            search_paths.append(Path(dock6_which).resolve().parent.parent / "parameters")
+    except Exception:
+        pass
+
+    # Common install paths
+    search_paths.extend([
+        Path("/usr/local/dock6/parameters"),
+        Path.home() / "dock6" / "parameters",
+        Path.home() / "software" / "dock6" / "parameters",
+        Path.home() / "programs" / "dock6" / "parameters",
+    ])
+
+    result = {}
+    for key, filename in param_files.items():
+        result[key] = filename  # Default: bare name (hope it's findable)
+        for search_dir in search_paths:
+            candidate = search_dir / filename
+            if candidate.exists():
+                result[key] = str(candidate.resolve())
+                break
+
+    # Log what we found
+    found = sum(1 for v in result.values() if "/" in v or "\\" in v)
+    logger.info(f"  DOCK6 parameters: {found}/{len(param_files)} found with full paths")
+    for key, path in result.items():
+        logger.debug(f"    {key}: {path}")
+
+    return result
+
+
+# =============================================================================
+# GRID PREFIX RESOLUTION
+# =============================================================================
+
+def resolve_grid_prefix(grid_dir: str, energy_grid: str) -> str:
+    """
+    Resolve the grid prefix for DOCK6.
+
+    DOCK6 expects a prefix like "/path/to/grids/grid" and appends
+    .nrg and .bmp itself.
+
+    Args:
+        grid_dir: Directory containing grid files
+        energy_grid: Energy grid filename (e.g., "grid.nrg")
+
+    Returns:
+        Full path prefix (without extension)
+    """
+    prefix = energy_grid.replace(".nrg", "").replace(".NRG", "")
+    return str(Path(grid_dir) / prefix)
+
+
+# =============================================================================
+# INPUT FILE GENERATION
+# =============================================================================
+
+def generate_dock6_input(
+        ligand_mol2: str,
+        spheres_file: str,
+        grid_prefix: str,
+        output_prefix: str,
+        output_path: str,
+        search_method: str = "flex",
+        dock6_params: Optional[Dict[str, str]] = None,
+        **kwargs,
+) -> str:
+    """
+    Generate a DOCK6 input file.
+
+    Args:
+        ligand_mol2: Path to ligand mol2 file
+        spheres_file: Path to selected_spheres.sph
+        grid_prefix: Grid prefix (without .nrg/.bmp)
+        output_prefix: Prefix for output scored mol2
+        output_path: Path to write the dock6.in file
+        search_method: "flex" or "rigid"
+        dock6_params: DOCK6 parameter file paths (from find_dock6_params)
+        **kwargs: Override any template variable
+
+    Returns:
+        Path to the generated input file
+    """
+    if dock6_params is None:
+        dock6_params = find_dock6_params()
+
+    template = DOCK6_FLEX_TEMPLATE if search_method == "flex" else DOCK6_RIGID_TEMPLATE
+
+    # Build template variables with defaults
+    template_vars = {
+        # Paths
+        "ligand_mol2": ligand_mol2,
+        "spheres_file": spheres_file,
+        "grid_prefix": grid_prefix,
+        "output_prefix": output_prefix,
+        # DOCK6 parameter files
+        "vdw_defn_file": dock6_params.get("vdw_defn_file", "vdw_AMBER_parm99.defn"),
+        "flex_defn_file": dock6_params.get("flex_defn_file", "flex.defn"),
+        "flex_drive_file": dock6_params.get("flex_drive_file", "flex_drive.tbl"),
+        # Flex-specific
+        "min_anchor_size": 5,
+        "pruning_max_orients": 1000,
+        "pruning_clustering_cutoff": 100,
+        "pruning_conformer_score_cutoff": 100.0,
+        # Orientation
+        "max_orientations": 1000,
+        # Minimization
+        "minimize": "yes",
+        "simplex_max_iterations": 500,
+        "simplex_max_cycles": 1,
+        "simplex_score_converge": 0.1,
+        "simplex_cycle_converge": 1.0,
+        "simplex_trans_step": 1.0,
+        "simplex_rot_step": 0.1,
+        "simplex_tors_step": 10.0,
+        # Output
+        "num_scored_conformers": 20,
+        "write_orientations": "no",
+    }
+
+    # Apply kwargs overrides
+    for key, val in kwargs.items():
+        if key in template_vars:
+            # Convert booleans to DOCK6 yes/no
+            if isinstance(val, bool):
+                val = "yes" if val else "no"
+            template_vars[key] = val
+
+    # Handle 'minimize' bool -> string
+    if isinstance(template_vars["minimize"], bool):
+        template_vars["minimize"] = "yes" if template_vars["minimize"] else "no"
+    elif template_vars["minimize"] is True:
+        template_vars["minimize"] = "yes"
+    elif template_vars["minimize"] is False:
+        template_vars["minimize"] = "no"
+
+    if isinstance(template_vars["write_orientations"], bool):
+        template_vars["write_orientations"] = "yes" if template_vars["write_orientations"] else "no"
+
+    content = template.format(**template_vars)
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        f.write(content)
+
+    return output_path
+
+
+# =============================================================================
+# DOCK6 EXECUTION
+# =============================================================================
+
+def run_dock6_single(
+        dock_input: str,
+        dock_output: str,
+        timeout: int = 600,
+) -> Dict[str, Any]:
+    """
+    Execute dock6 for a single input file.
+
+    Args:
+        dock_input: Path to dock6.in
+        dock_output: Path for dock6.out
+        timeout: Maximum seconds to wait
+
+    Returns:
+        Dict with: success, returncode, runtime_sec, error
+    """
+    start = time.time()
+
+    try:
+        result = subprocess.run(
+            ["dock6", "-i", dock_input, "-o", dock_output],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        elapsed = time.time() - start
+
+        return {
+            "success": result.returncode == 0,
+            "returncode": result.returncode,
+            "runtime_sec": round(elapsed, 1),
+            "error": result.stderr[:500] if result.returncode != 0 and result.stderr else None,
+        }
+
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "returncode": -1,
+            "runtime_sec": round(time.time() - start, 1),
+            "error": f"Timeout after {timeout}s",
+        }
+    except FileNotFoundError:
+        return {
+            "success": False,
+            "returncode": -2,
+            "runtime_sec": 0,
+            "error": "dock6 not found in PATH",
+        }
+
+
+# =============================================================================
+# VALIDATION
+# =============================================================================
+
+def validate_grids(spheres_file: str, grid_prefix: str) -> List[str]:
+    """
+    Validate that all required grid files exist.
+
+    Returns:
+        List of error messages (empty = all OK)
+    """
+    errors = []
+
+    if not Path(spheres_file).exists():
+        errors.append(f"Spheres not found: {spheres_file}")
+
+    nrg = grid_prefix + ".nrg"
+    if not Path(nrg).exists():
+        errors.append(f"Energy grid not found: {nrg}")
+
+    bmp = grid_prefix + ".bmp"
+    if not Path(bmp).exists():
+        errors.append(f"Bump grid not found: {bmp}")
+
+    return errors
+
+
+def validate_dock6_available() -> bool:
+    """Check if dock6 binary is available."""
+    try:
+        result = subprocess.run(
+            ["which", "dock6"], capture_output=True, text=True, timeout=5,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+# =============================================================================
+# MAIN PIPELINE FUNCTION
+# =============================================================================
+
+def run_dock6_batch(
+        ligand_mol2_dir: Union[str, Path],
+        spheres_file: Union[str, Path],
+        grid_prefix: str,
+        output_dir: Union[str, Path],
+        search_method: str = "flex",
+        max_orientations: int = 1000,
+        num_scored_conformers: int = 20,
+        minimize: bool = True,
+        simplex_max_iterations: int = 500,
+        timeout_per_molecule: int = 600,
+        molecule_filter: Optional[List[str]] = None,
+        dry_run: bool = False,
+        **kwargs,
+) -> Dict[str, Any]:
+    """
+    Run DOCK6 for all prepared ligands in a directory.
+
+    Scans ligand_mol2_dir for *.mol2 files. For each, generates a
+    dock6.in and executes dock6.
+
+    Args:
+        ligand_mol2_dir: Directory with prepared mol2 files (from 00c)
+        spheres_file: Path to selected_spheres.sph
+        grid_prefix: Grid prefix (without .nrg/.bmp)
+        output_dir: Directory for docking output
+        search_method: "flex" | "rigid"
+        max_orientations: Maximum orientations
+        num_scored_conformers: Poses to write per molecule
+        minimize: Run simplex minimization
+        simplex_max_iterations: Max minimization iterations
+        timeout_per_molecule: Timeout in seconds per molecule
+        molecule_filter: Only dock these molecules (None = all)
+        dry_run: Generate input files only, don't execute dock6
+        **kwargs: Additional DOCK6 parameters (min_anchor_size, etc.)
+
+    Returns:
+        Dict with per-molecule status and summary
+    """
+    ligand_dir = Path(ligand_mol2_dir)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    spheres_file = str(spheres_file)
+
+    # --- Validate prerequisites ---
+    if not ligand_dir.exists():
+        logger.error(f"Ligand directory not found: {ligand_dir}")
+        logger.error("Run module 00c first.")
+        return {"n_total": 0, "n_ok": 0, "n_failed": 0, "error": "Ligand dir not found"}
+
+    grid_errors = validate_grids(spheres_file, grid_prefix)
+    if grid_errors:
+        for err in grid_errors:
+            logger.error(err)
+        logger.error("Check grids.grid_dir in campaign_config.yaml")
+        return {"n_total": 0, "n_ok": 0, "n_failed": 0, "error": "; ".join(grid_errors)}
+
+    if not dry_run and not validate_dock6_available():
+        logger.error("dock6 binary not found in PATH")
+        return {"n_total": 0, "n_ok": 0, "n_failed": 0, "error": "dock6 not in PATH"}
+
+    # --- Find ligand mol2 files ---
+    mol2_files = sorted(ligand_dir.glob("*.mol2"))
+    if molecule_filter:
+        filter_set = set(molecule_filter)
+        mol2_files = [f for f in mol2_files if f.stem in filter_set]
+
+    if not mol2_files:
+        logger.error(f"No mol2 files found in {ligand_dir}")
+        if molecule_filter:
+            logger.error(f"  Filter: {molecule_filter}")
+        return {"n_total": 0, "n_ok": 0, "n_failed": 0, "error": "No mol2 files"}
+
+    logger.info(f"Found {len(mol2_files)} ligands to dock")
+    logger.info(f"Grid prefix: {grid_prefix}")
+    logger.info(f"Spheres:     {spheres_file}")
+    logger.info(f"Method:      {search_method}")
+    logger.info(f"Orientations:{max_orientations}")
+    if dry_run:
+        logger.info("*** DRY RUN — generating input files only ***")
+
+    # --- Find DOCK6 parameter files ---
+    dock6_params = find_dock6_params()
+
+    # --- Process each molecule ---
+    results = []
+    total_time = 0
+
+    for idx, mol2_file in enumerate(mol2_files):
+        name = mol2_file.stem
+        mol_out = output_dir / name
+        mol_out.mkdir(parents=True, exist_ok=True)
+
+        output_prefix = str(mol_out / name)
+        dock_input = str(mol_out / "dock6.in")
+        dock_output = str(mol_out / "dock6.out")
+        scored_mol2 = f"{output_prefix}_scored.mol2"
+
+        logger.info(f"  [{idx + 1}/{len(mol2_files)}] {name}")
+
+        # --- Generate input file ---
+        generate_dock6_input(
+            ligand_mol2=str(mol2_file.resolve()),
+            spheres_file=spheres_file,
+            grid_prefix=grid_prefix,
+            output_prefix=output_prefix,
+            output_path=dock_input,
+            search_method=search_method,
+            dock6_params=dock6_params,
+            max_orientations=max_orientations,
+            num_scored_conformers=num_scored_conformers,
+            minimize=minimize,
+            simplex_max_iterations=simplex_max_iterations,
+            **kwargs,
+        )
+
+        if dry_run:
+            results.append({
+                "Name": name,
+                "status": "DRY_RUN",
+                "dock_input": dock_input,
+                "scored_mol2": None,
+                "runtime_sec": 0,
+                "error": None,
+            })
+            logger.info(f"    -> DRY_RUN (input generated)")
+            continue
+
+        # --- Execute DOCK6 ---
+        run_result = run_dock6_single(dock_input, dock_output, timeout=timeout_per_molecule)
+        has_output = Path(scored_mol2).exists() and Path(scored_mol2).stat().st_size > 0
+
+        status = "OK" if run_result["success"] and has_output else "FAILED"
+        error = None
+        if not run_result["success"]:
+            error = run_result.get("error", "Unknown error")
+        elif not has_output:
+            error = "dock6 succeeded but no scored mol2 produced"
+
+        results.append({
+            "Name": name,
+            "status": status,
+            "dock_input": dock_input,
+            "dock_output": dock_output,
+            "scored_mol2": scored_mol2 if has_output else None,
+            "runtime_sec": run_result["runtime_sec"],
+            "error": error,
+        })
+
+        total_time += run_result["runtime_sec"]
+
+        if status == "OK":
+            logger.info(f"    -> OK ({run_result['runtime_sec']}s)")
+        else:
+            logger.warning(f"    -> FAILED: {error}")
+
+    # --- Save status CSV ---
+    df_status = pd.DataFrame(results)
+    status_csv = output_dir / "docking_status.csv"
+    df_status.to_csv(status_csv, index=False, encoding="utf-8")
+    logger.info(f"  Saved: {status_csv}")
+
+    # --- Save summary TXT ---
+    n_ok = sum(1 for r in results if r["status"] == "OK")
+    n_dry = sum(1 for r in results if r["status"] == "DRY_RUN")
+    n_fail = sum(1 for r in results if r["status"] == "FAILED")
+
+    summary_path = output_dir / "docking_summary.txt"
+    w = 70
+    lines = [
+        "=" * w,
+        "01b DOCK6 RUN - SUMMARY",
+        "=" * w,
+        "",
+        f"Date:              {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+        f"Molecules:         {len(results)}",
+        f"Successful:        {n_ok}",
+        f"Failed:            {n_fail}",
+        f"Dry run:           {n_dry}",
+        f"Total time:        {total_time:.0f}s ({total_time / 60:.1f} min)",
+        f"Avg per molecule:  {total_time / max(n_ok, 1):.1f}s",
+        "",
+        f"Method:            {search_method}",
+        f"Orientations:      {max_orientations}",
+        f"Minimize:          {minimize}",
+        f"Max iterations:    {simplex_max_iterations}",
+        "",
+        "-" * w,
+        f"{'Name':<30} {'Status':>8} {'Time(s)':>8} {'Scored mol2':<20}",
+        "-" * w,
+    ]
+
+    for r in results:
+        scored = "yes" if r.get("scored_mol2") else "—"
+        lines.append(
+            f"{r['Name']:<30} {r['status']:>8} {r['runtime_sec']:>8.1f} {scored:<20}"
+        )
+
+    if n_fail > 0:
+        lines.extend(["", "FAILURES:"])
+        for r in results:
+            if r["status"] == "FAILED":
+                lines.append(f"  {r['Name']}: {r.get('error', 'unknown')}")
+
+    lines.extend(["", "=" * w])
+
+    with open(summary_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+    logger.info("")
+    logger.info(f"{'=' * 60}")
+    if dry_run:
+        logger.info(f"  DRY RUN: {n_dry} input files generated")
+    else:
+        logger.info(f"  RESULTS: {n_ok}/{len(results)} dockings completed "
+                     f"({total_time:.0f}s total)")
+        if n_fail > 0:
+            logger.info(f"  FAILED:  {n_fail}")
+    logger.info(f"{'=' * 60}")
+
+    return {
+        "n_total": len(results),
+        "n_ok": n_ok,
+        "n_failed": n_fail,
+        "n_dry_run": n_dry,
+        "total_runtime_sec": round(total_time, 1),
+        "results": results,
+        "status_csv": str(status_csv),
+        "summary_txt": str(summary_path),
+        "output_dir": str(output_dir),
+    }

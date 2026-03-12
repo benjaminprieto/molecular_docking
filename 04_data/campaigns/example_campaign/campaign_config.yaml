@@ -1,0 +1,67 @@
+# =============================================================================
+# Campaign Configuration Template
+# =============================================================================
+# Fuente de verdad para una campaña de docking.
+#
+# Pipeline:
+#   00a: Parse moléculas → unique_molecules.csv
+#   00b: Preparar receptor (opcional)
+#   00c: Ionization profiling → SDF protonados + perfiles de carga
+#        ← PAUSA: revisar outputs →
+#   00d: Antechamber → mol2 DOCK6-ready
+#   01a: Grid generation (opcional)
+#   01b: DOCK6 docking
+#   02a: Score collection
+#
+# Project: molecular_docking
+# Version: 2.0
+# =============================================================================
+
+campaign_id: "example_campaign"
+description: "Example docking campaign"
+
+receptor:
+  pdb: "receptor/XT1_6EJ7.pdb"
+  chain: null
+  protonation:
+    enabled: false
+    tool: "pdb2pqr"
+    force_field: "AMBER"
+  prepared_mol2: null
+  remove_water: true
+  remove_hetatm: true
+
+# pH de docking — valor único o lista
+# Si lista, 00c genera SDF para cada pH
+docking_ph: 7.2
+# docking_ph: [7.2, 6.3]
+
+molecules:
+  input_file: "molecules/"
+  name_column: "Name"
+  smiles_column: "Smile"
+  name_source: "header_first_word"
+  name_property: "_Name"
+  protonation:
+    enabled: true
+    engine: "openbabel"             # openbabel | dimorphite | qupkake
+
+grids:
+  grid_dir: "grids/"
+  spheres_file: "selected_spheres.sph"
+  energy_grid: "grid.nrg"
+  bump_grid: "grid.bmp"
+  generate: false
+  binding_site:
+    method: "residues"
+    residues: []
+    radius: 10.0
+
+output:
+  scores_filename: "01_top_500_molecules.xlsx"
+  mol2_dirname: "docked_molecules"
+
+metadata:
+  source: null
+  date: null
+  notes: null

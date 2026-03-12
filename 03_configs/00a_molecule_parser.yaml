@@ -1,0 +1,61 @@
+# =============================================================================
+# 00a Molecule Parser - Configuration
+# =============================================================================
+# Parsea moleculas de cualquier formato -> tabla normalizada + SDF limpio.
+#
+# Formatos soportados:
+#   - SDF (uno o varios, con propiedades opcionales como <rmsd>)
+#   - CSV/XLSX con columnas Name + SMILES
+#   - Directorio de mol2 individuales
+#   - SMILES text file (una por linea: SMILES nombre)
+#   - Directorio mixto (escanea todos los formatos)
+#
+# INPUT: campaign_config.molecules.input_file
+# OUTPUT: 05_results/{campaign_id}/00a_molecule_parser/
+#
+# Project: molecular_docking
+# Module: 00a
+# Version: 1.0
+# =============================================================================
+
+parameters:
+  # Resolucion de conformeros duplicados (mismo nombre, multiples entradas)
+  # "best_rmsd"  -> menor RMSD (requiere propiedad <rmsd> en SDF)
+  # "first"      -> primer conformero encontrado
+  # "all"        -> mantener todos (cada conformero se dockea por separado)
+  conformer_strategy: "best_rmsd"
+
+  # Calcular propiedades moleculares: MW, LogP, HBD, HBA, TPSA, QED,
+  # Rotatable_Bonds, Formal_Charge, Rings, Aromatic_Rings
+  compute_properties: true
+
+  # Detectar duplicados por SMILES canonico
+  # Moleculas con nombres distintos pero misma estructura se MARCAN
+  # (no se eliminan, queda a criterio del usuario)
+  detect_smiles_duplicates: true
+
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  log_level: "INFO"
+
+# -----------------------------------------------------------------------------
+# OUTPUT
+# -----------------------------------------------------------------------------
+outputs:
+  subdir: "00a_molecule_parser"
+
+  # Archivos generados:
+  #   unique_molecules.csv       -> tabla normalizada (input para 00c)
+  #   unique_molecules.sdf       -> SDF limpio (1 molecula por entrada)
+  #   parse_summary.txt          -> resumen legible
+  #   00a_molecule_parser.log    -> log completo
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/00a_molecule_parser.py \
+#     --config 03_configs/00a_molecule_parser.yaml \
+#     --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml
+#
+# # Directo (sin campaign):
+# python 02_scripts/00a_molecule_parser.py --input molecules.sdf --output results/
+# =============================================================================

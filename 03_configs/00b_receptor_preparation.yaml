@@ -1,0 +1,92 @@
+# =============================================================================
+# 00b Receptor Preparation - Configuration
+# =============================================================================
+# Prepara el receptor para DOCK6: limpieza + protonacion + mol2 con cargas.
+#
+# DOCK6 requiere:
+#   - rec_charged.mol2  (Sybyl atom types + partial charges)
+#   - rec_noH.pdb       (sin H, para DMS surface en 01a)
+#
+# OPCIONAL: Si receptor.protonation.enabled=false en campaign_config,
+# este modulo se SALTA automaticamente.
+#
+# Si receptor.prepared_mol2 apunta a un mol2 existente, se usa directo.
+#
+# STRATEGIES:
+#   pdb2pqr  -> PDB2PQR + PROPKA: pH-aware (calcula pKa por residuo)
+#               RECOMENDADA para docking a pH no-fisiologico (Golgi pH 6.3)
+#               His, Asp, Glu se protoran/deprotonan segun su pKa real
+#               Output: AMBER charges inyectadas en mol2 con Sybyl types
+#
+#   reduce   -> AmberTools reduce: agrega H basado en entorno local
+#               + tleap ff14SB para cargas AMBER
+#               Menos pH-aware que PROPKA, pero robusto
+#
+#   obabel   -> OpenBabel -p pH: simple, siempre funciona
+#               Gasteiger charges (menos preciso que AMBER)
+#               Funcional para DOCK6 grid scoring
+#
+# INPUT: campaign_config.receptor.pdb
+# OUTPUT: 05_results/{campaign_id}/00b_receptor_preparation/
+#
+# Project: molecular_docking
+# Module: 00b
+# Version: 1.0
+# =============================================================================
+
+parameters:
+  # Herramienta de protonacion (override de campaign_config si se especifica)
+  # null = usar campaign_config.receptor.protonation.tool
+  protonation_tool: null
+
+  # Force field para PDB2PQR (solo aplica si tool=pdb2pqr)
+  # "AMBER"  -> AMBER ff94 charges (estandar DOCK6)
+  # "CHARMM" -> CHARMM 27 charges
+  # "PARSE"  -> Optimizado para calculo electrostatico (Poisson-Boltzmann)
+  force_field: "AMBER"
+
+  # Eliminar conformaciones alternativas (solo primera: altLoc '' o 'A')
+  remove_alt_conformations: true
+
+  # (Futuro) Completar sidechains faltantes
+  # Requiere Chimera o Modeller
+  # complete_sidechains: false
+
+  # Log level
+  log_level: "INFO"
+
+# -----------------------------------------------------------------------------
+# OUTPUT
+# -----------------------------------------------------------------------------
+outputs:
+  subdir: "00b_receptor_preparation"
+
+  # Archivos generados:
+  #   rec_charged.mol2           -> DOCK6-ready (Sybyl types + cargas)
+  #   rec_noH.pdb                -> Sin H (para DMS surface en 01a)
+  #   receptor_clean.pdb         -> PDB limpio (sin agua, HETATM, alt conf)
+  #   protonation_report.json    -> Reporte detallado (pKa, cargas, etc.)
+  #   protonation_summary.txt    -> Resumen legible
+  #   00b_receptor_preparation.log
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# # Protonacion pH-aware (recomendada para Golgi targeting):
+# python 02_scripts/00b_receptor_preparation.py \
+#     --config 03_configs/00b_receptor_preparation.yaml \
+#     --campaign 04_data/campaigns/mi_campana/campaign_config.yaml \
+#     --ph 6.3 --tool pdb2pqr
+#
+# # Protonacion simple:
+# python 02_scripts/00b_receptor_preparation.py \
+#     --config 03_configs/00b_receptor_preparation.yaml \
+#     --campaign 04_data/campaigns/mi_campana/campaign_config.yaml \
+#     --tool obabel
+#
+# # Solo chain A:
+# python 02_scripts/00b_receptor_preparation.py \
+#     --config 03_configs/00b_receptor_preparation.yaml \
+#     --campaign 04_data/campaigns/mi_campana/campaign_config.yaml \
+#     --chain A
+# =============================================================================

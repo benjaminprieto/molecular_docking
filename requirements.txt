@@ -1,0 +1,14 @@
+# pip-only dependencies. For full install use: conda env create -f environment.yaml
+pandas>=1.5.0
+numpy>=1.23.0
+scipy>=1.9.0
+openpyxl>=3.0.0
+pyyaml>=6.0
+tqdm>=4.64.0
+lxml>=4.9.0
+dimorphite_dl>=1.3.2
+pdb2pqr>=3.6.0
+matplotlib>=3.6.0
+seaborn>=0.12.0
+pytest>=7.0
+pytest-cov>=4.0

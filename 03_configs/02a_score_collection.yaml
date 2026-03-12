@@ -1,0 +1,10 @@
+# 02a Score Collection
+parameters:
+  score_key: "Grid_Score"
+  max_molecules: 500                  # 0 = all
+  extract_best_pose_mol2: true
+  keep_all_poses: false
+  compute_properties: true
+  log_level: "INFO"
+outputs:
+  subdir: "02a_score_collection"

@@ -1,0 +1,15 @@
+# 01a Grid Generation (OPTIONAL - skip if grids exist)
+# Binding site defined in campaign_config.yaml under grids.binding_site
+parameters:
+  probe_radius: 1.4                   # DMS surface probe (Angstroms)
+  max_spheres: 50                     # For sphere_selector
+  box_margin: 10.0                    # Margin around spheres for box
+  grid_spacing: 0.3                   # Grid spacing (Angstroms)
+  energy_cutoff_distance: 9999.0
+  attractive_exponent: 6
+  repulsive_exponent: 12
+  dielectric_factor: 4
+  bump_overlap: 0.75
+  log_level: "INFO"
+outputs:
+  subdir: "01a_grid_generation"

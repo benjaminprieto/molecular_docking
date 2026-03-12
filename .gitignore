@@ -1,0 +1,9 @@
+05_results/*/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.idea/
+.vscode/
+.DS_Store
