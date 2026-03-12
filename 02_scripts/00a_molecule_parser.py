@@ -25,14 +25,7 @@ Output: 05_results/{campaign_id}/00a_molecule_parser/
     - 00a_molecule_parser.log
 
 Usage:
-    python 02_scripts/00a_molecule_parser.py \\
-        --config 03_configs/00a_molecule_parser.yaml \\
-        --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml
-
-    # Direct mode (no campaign):
-    python 02_scripts/00a_molecule_parser.py \\
-        --input molecules.sdf \\
-        --output results/00a/
+python 02_scripts/00a_molecule_parser.py --config 03_configs/00a_molecule_parser.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
 Project: molecular_docking
 Module: 00a

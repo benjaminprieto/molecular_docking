@@ -24,9 +24,7 @@ Output: 05_results/{campaign_id}/00c_ionization_profiling/{run_id}/
     - ionprofile.log
 
 Usage:
-    python 02_scripts/00c_ionization_profiling.py \\
-        --config 03_configs/00c_ionization_profiling.yaml \\
-        --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+    python 02_scripts/00c_ionization_profiling.py --config 03_configs/00c_ionization_profiling.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
 Project: molecular_docking
 Module: 00c

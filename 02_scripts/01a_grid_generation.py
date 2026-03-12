@@ -11,9 +11,7 @@ Binding site methods (from campaign_config.yaml):
   D. (skip)            -> grids already exist in grid_dir
 
 Usage:
-    python 02_scripts/01a_grid_generation.py \\
-        --config 03_configs/01a_grid_generation.yaml \\
-        --campaign 04_data/campaigns/my_campaign/campaign_config.yaml
+    python 02_scripts/01a_grid_generation.py --config 03_configs/01a_grid_generation.yaml --campaign 04_data/campaigns/my_campaign/campaign_config.yaml
 
     # Force regeneration even if grids exist:
     python 02_scripts/01a_grid_generation.py \\
@@ -107,15 +105,21 @@ def main():
     # --- Resolve receptor paths ---
     rec_config = cc.get("receptor", {})
 
-    # rec_noH.pdb: from 00b output or campaign receptor
+    # rec_noH.pdb: prefer trimmed from 00e, fallback to 00b, then campaign
     receptor_prep_dir = Path("05_results") / campaign_id / "00b_receptor_preparation"
-    rec_noH = receptor_prep_dir / "rec_noH.pdb"
-    rec_mol2 = receptor_prep_dir / "rec_charged.mol2"
+    binding_site_dir = Path("05_results") / campaign_id / "00e_binding_site"
+    rec_noH_site = binding_site_dir / "rec_noH_site.pdb"
 
-    if not rec_noH.exists():
-        # Fallback: use campaign receptor directly (assumes no H)
+    if rec_noH_site.exists():
+        rec_noH = rec_noH_site
+        logger.info(f"Using trimmed PDB from 00e: {rec_noH}")
+    elif (receptor_prep_dir / "rec_noH.pdb").exists():
+        rec_noH = receptor_prep_dir / "rec_noH.pdb"
+    else:
         rec_noH = campaign_dir / rec_config.get("pdb", "receptor/receptor.pdb")
         logger.info(f"Using campaign receptor as noH PDB: {rec_noH}")
+
+    rec_mol2 = receptor_prep_dir / "rec_charged.mol2"
 
     if not rec_mol2.exists():
         # Check prepared_mol2

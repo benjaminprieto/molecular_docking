@@ -245,64 +245,98 @@ def generate_dms_surface(
 def generate_spheres(
         dms_path: str,
         output_dir: str,
-        steric_close_distance: float = 1.0,
+        steric_close_distance: float = 0.0,
         min_radius: float = 1.4,
         max_radius: float = 4.0,
 ) -> Optional[str]:
     """
     Generate spheres using sphgen.
 
-    sphgen reads from an input file (INSPH), not command-line args.
+    sphgen reads from a file called INSPH in the current working directory.
+    It creates temporary files (temp1.ms, temp2.sph, temp3.atc) and writes
+    the sphere output to the filename specified in INSPH (last line).
+    OUTSPH is the log/info file.
+
+    CRITICAL: sphgen (Fortran) will fail if OUTSPH or temp files already
+    exist. They must be deleted before each run.
 
     Returns:
         Path to receptor.sph, or None if failed
     """
     output_path = Path(output_dir) / "receptor.sph"
-    temp_out = Path(output_dir) / "temp_spheres.sph"
+    sph_filename = "receptor.sph"
+    dms_filename = Path(dms_path).name
 
-    # sphgen input file
-    insph_content = f"""\
-{dms_path}
+    # --- Clean up files that sphgen refuses to overwrite ---
+    cleanup_files = [
+        "OUTSPH", "temp1.ms", "temp2.sph", "temp3.atc",
+        sph_filename,
+    ]
+    for fname in cleanup_files:
+        fpath = Path(output_dir) / fname
+        if fpath.exists():
+            fpath.unlink()
+            logger.debug(f"    Cleaned up: {fname}")
+
+    # --- Write INSPH (format from DOCK6 documentation) ---
+    # Line 1: DMS surface file
+    # Line 2: R (receptor) or L (ligand)
+    # Line 3: X (all surface points) or a specific subset
+    # Line 4: steric close distance (0.0 = no filter)
+    # Line 5: maximum sphere radius
+    # Line 6: minimum sphere radius
+    # Line 7: output sphere file
+    insph_content = f"""{dms_filename}
 R
 X
-0.0
+{steric_close_distance}
 {max_radius}
 {min_radius}
-{str(temp_out)}
+{sph_filename}
 """
     insph_path = Path(output_dir) / "INSPH"
     insph_path.write_text(insph_content)
 
     logger.info(f"  Step 2: Sphere generation (sphgen)")
+    logger.debug(f"    INSPH: dms={dms_filename}, R={max_radius}, r={min_radius}, out={sph_filename}")
+
     try:
         result = subprocess.run(
-            ["sphgen", "-i", str(insph_path), "-o", str(Path(output_dir) / "sphgen.out")],
+            ["sphgen", "-i", "INSPH", "-o", "OUTSPH"],
             capture_output=True, text=True, timeout=600,
             cwd=output_dir,
         )
 
-        # sphgen sometimes writes to temp_out
-        if temp_out.exists() and temp_out.stat().st_size > 0:
-            temp_out.rename(output_path)
-        elif output_path.exists() and output_path.stat().st_size > 0:
-            pass  # Already at output_path
-        else:
-            # sphgen may write to outsph.sph by default
-            default_out = Path(output_dir) / "outsph.sph"
-            if default_out.exists():
-                default_out.rename(output_path)
+        # Log any output for debugging
+        if result.stdout:
+            logger.debug(f"    sphgen stdout: {result.stdout[:500]}")
+        if result.stderr:
+            logger.warning(f"    sphgen stderr: {result.stderr[:500]}")
+        if result.returncode != 0:
+            logger.warning(f"    sphgen returncode: {result.returncode}")
 
+        # Check if sphere file was created
         if output_path.exists() and output_path.stat().st_size > 0:
-            logger.info(f"    -> {output_path.name}")
+            # Count clusters from OUTSPH
+            outsph = Path(output_dir) / "OUTSPH"
+            if outsph.exists():
+                outsph_text = outsph.read_text()
+                logger.debug(f"    OUTSPH: {outsph_text[:300]}")
+            logger.info(f"    -> {output_path.name} ({output_path.stat().st_size} bytes)")
             return str(output_path)
         else:
-            logger.error("    sphgen produced no output")
+            # Log OUTSPH for diagnostics
+            outsph = Path(output_dir) / "OUTSPH"
+            if outsph.exists() and outsph.stat().st_size > 0:
+                logger.error(f"    OUTSPH content: {outsph.read_text()[:500]}")
+            logger.error("    sphgen produced no sphere output")
             return None
+
     except FileNotFoundError:
         logger.error("    sphgen not found in PATH")
         return None
     except subprocess.TimeoutExpired:
-        logger.error("    sphgen timed out")
+        logger.error("    sphgen timed out (>600s)")
         return None
 
 
@@ -323,14 +357,21 @@ def select_spheres_by_ligand(
     """
     logger.info(f"  Step 3a: Sphere selection by reference ligand (radius={radius} A)")
 
+    # Use absolute paths for sphere_selector arguments
+    all_spheres_abs = str(Path(all_spheres).resolve())
+    ligand_abs = str(Path(ligand_file).resolve())
+    target = Path(output_path)
+    target_dir = str(target.parent)
+
     try:
         result = subprocess.run(
-            ["sphere_selector", all_spheres, ligand_file, str(radius)],
+            ["sphere_selector", all_spheres_abs, ligand_abs, str(radius)],
             capture_output=True, text=True, timeout=60,
+            cwd=target_dir,
         )
 
-        # sphere_selector writes to selected_spheres.sph in cwd
-        cwd_output = Path.cwd() / "selected_spheres.sph"
+        # sphere_selector writes selected_spheres.sph to cwd
+        cwd_output = Path(target_dir) / "selected_spheres.sph"
         target = Path(output_path)
 
         if cwd_output.exists() and cwd_output != target:
@@ -404,8 +445,17 @@ def generate_box(
     """
     box_path = Path(output_dir) / "grid.box"
 
-    # showbox input: yes (use spheres), margin, spheres file, output file
-    showbox_input = f"Y\n{margin}\n{selected_spheres}\n{str(box_path)}\n"
+    # showbox input: use filenames only (runs with cwd=output_dir)
+    spheres_filename = Path(selected_spheres).name
+    box_filename = box_path.name
+
+    # showbox input format (5 lines):
+    # 1. Y/N  - use spheres to define box
+    # 2. margin - extra margin around spheres (Angstroms)
+    # 3. sphere file
+    # 4. cluster number (1 = largest)
+    # 5. output box file
+    showbox_input = f"Y\n{margin}\n{spheres_filename}\n1\n{box_filename}\n"
 
     logger.info(f"  Step 4: Box generation (margin={margin} A)")
     try:
@@ -415,6 +465,9 @@ def generate_box(
             capture_output=True, text=True, timeout=60,
             cwd=output_dir,
         )
+
+        if result.stderr:
+            logger.warning(f"    showbox stderr: {result.stderr[:300]}")
 
         if box_path.exists() and box_path.stat().st_size > 0:
             logger.info(f"    -> {box_path.name}")
@@ -474,9 +527,13 @@ def generate_grid(
         if vdw_defn_file is None:
             vdw_defn_file = "vdw_AMBER_parm99.defn"
 
-    full_prefix = str(Path(output_dir) / grid_prefix)
+    full_prefix = str(Path(output_dir).resolve() / grid_prefix)
 
-    # grid.in content
+    # grid.in content — use absolute paths
+    receptor_abs = str(Path(receptor_charged_mol2).resolve())
+    box_abs = str(Path(box_path).resolve())
+    vdw_abs = str(Path(vdw_defn_file).resolve()) if "/" in vdw_defn_file or "\\" in vdw_defn_file else vdw_defn_file
+
     grid_in_content = f"""\
 compute_grids                  yes
 grid_spacing                   {grid_spacing}
@@ -491,9 +548,9 @@ distance_dielectric            yes
 dielectric_factor              {dielectric_factor}
 bump_filter                    yes
 bump_overlap                   {bump_overlap}
-receptor_file                  {receptor_charged_mol2}
-box_file                       {box_path}
-vdw_definition_file            {vdw_defn_file}
+receptor_file                  {receptor_abs}
+box_file                       {box_abs}
+vdw_definition_file            {vdw_abs}
 score_grid_prefix              {full_prefix}
 """
 
@@ -505,7 +562,7 @@ score_grid_prefix              {full_prefix}
 
     try:
         result = subprocess.run(
-            ["grid", "-i", str(grid_in_path), "-o", str(Path(output_dir) / "grid.out")],
+            ["grid", "-i", str(grid_in_path.resolve()), "-o", str((Path(output_dir) / "grid.out").resolve())],
             capture_output=True, text=True,
             timeout=3600,  # 1 hour max
             cwd=output_dir,

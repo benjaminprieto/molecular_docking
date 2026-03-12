@@ -2,66 +2,123 @@
 # Campaign Configuration Template
 # =============================================================================
 # Fuente de verdad para una campaña de docking.
+# Equivalente a cavity_config.yaml en dock2profile.
 #
-# Pipeline:
-#   00a: Parse moléculas → unique_molecules.csv
-#   00b: Preparar receptor (opcional)
-#   00c: Ionization profiling → SDF protonados + perfiles de carga
-#        ← PAUSA: revisar outputs →
-#   00d: Antechamber → mol2 DOCK6-ready
-#   01a: Grid generation (opcional)
-#   01b: DOCK6 docking
-#   02a: Score collection
+# Una CAMPAÑA = un receptor + un set de moléculas + condiciones de docking.
+#
+# NOTA: Copiar a 04_data/campaigns/{campaign_id}/ y editar.
 #
 # Project: molecular_docking
-# Version: 2.0
+# Version: 1.0
 # =============================================================================
 
+# --- Identidad ---
 campaign_id: "example_campaign"
 description: "Example docking campaign"
 
+# --- Receptor ---
 receptor:
+  # PDB del receptor (relativo al directorio de la campaña)
   pdb: "receptor/XT1_6EJ7.pdb"
+
+  # Chain(s) a conservar (null = todas)
   chain: null
+
+  # Protonación del receptor (OPCIONAL)
+  # Si enabled=false, se usa prepared_mol2 directamente.
+  # Si enabled=true, se protona con la herramienta indicada al docking_ph.
   protonation:
-    enabled: false
-    tool: "pdb2pqr"
-    force_field: "AMBER"
-  prepared_mol2: null
+    enabled: true                        # true = protonar con herramienta
+    tool: "pdb2pqr"                       # pdb2pqr | reduce | obabel
+    force_field: "AMBER"                  # AMBER | CHARMM | PARSE (para pdb2pqr)
+
+  # mol2 pre-preparado (si ya tienes receptor listo para DOCK6)
+  # Si protonation.enabled=true, este campo se ignora.
+  prepared_mol2: null                     # e.g., "receptor/rec_charged.mol2"
+
+  # Opciones de limpieza del PDB
   remove_water: true
   remove_hetatm: true
 
-# pH de docking — valor único o lista
-# Si lista, 00c genera SDF para cada pH
+# --- pH de docking ---
+# Afecta protonación de receptor (si enabled) y ligandos (si enabled).
+# Ejemplos:
+#   7.2-7.4  → fisiológico (citoplasma)
+#   6.2-6.5  → Golgi apparatus / endosomas tempranos
+#   5.0-5.5  → lisosomas / endosomas tardíos
+#   4.5-5.0  → estómago
 docking_ph: 7.2
-# docking_ph: [7.2, 6.3]
 
+# --- Moléculas de entrada ---
 molecules:
+  # Archivo o directorio con moléculas a dockear
+  # Formatos: SDF, CSV/XLSX, mol2, SMILES txt, directorio mixto
   input_file: "molecules/"
-  name_column: "Name"
-  smiles_column: "Smile"
-  name_source: "header_first_word"
-  name_property: "_Name"
-  protonation:
-    enabled: true
-    engine: "openbabel"             # openbabel | dimorphite | qupkake
 
+  # Para CSV/XLSX: columnas con nombre y SMILES
+  name_column: "Name"                     # null = auto-detect
+  smiles_column: "Smile"                  # null = auto-detect
+
+  # Para SDF: cómo extraer el nombre de la molécula
+  # "header_first_word" = primera palabra del header (e.g., MolPort-047-542-199)
+  # "header_full"       = header completo
+  # "property"          = leer de propiedad SDF (ver name_property)
+  name_source: "header_first_word"
+  name_property: "_Name"                  # Solo si name_source=property
+
+  # Protonación de ligandos (OPCIONAL)
+  # Si enabled=false, se usa el SMILES tal cual sin modificar.
+  protonation:
+    enabled: true                         # true = protonar con herramienta
+    tool: "obabel"                        # dimorphite_dl | obabel
+    obabel_fallback: true                 # Si dimorphite falla, intentar obabel
+
+# --- Grids DOCK6 ---
 grids:
+  # Directorio con grids pre-existentes (relativo a campaña O absoluto)
+  # Si los grids existen y son válidos, 01a se salta automáticamente.
   grid_dir: "grids/"
   spheres_file: "selected_spheres.sph"
   energy_grid: "grid.nrg"
   bump_grid: "grid.bmp"
-  generate: false
+
+  # Generación de grids (si no existen)
+  # Si generate=true Y no hay grids válidos en grid_dir, se generan.
+  generate: true
+
+  # Definición del binding site (solo si generate=true)
+  # Métodos:
+  #   reference_ligand  → esferas cerca de un ligando cristalográfico (estándar DOCK6)
+  #   residues          → centroide de residuos clave (no necesita ligando)
+  #   coordinates       → punto (x, y, z) explícito
   binding_site:
-    method: "residues"
-    residues: []
+    method: "reference_ligand"                    # reference_ligand | residues | coordinates
+
+    # Método A: reference_ligand
+    reference_mol2: "molecules/UDX.mol2"
+
+    # Método B: residues (centroide se calcula automáticamente)
+    # residues: []
+    #  - "GLU529"
+    #  - "TRP555"
+    #  - "CYS574"
+
+    # Método C: coordenadas explícitas
+    # center: [10.5, 15.2, 22.8]
+
+    # Radio para selección de esferas (Angstroms, todos los métodos)
     radius: 10.0
 
+# --- Output ---
 output:
+  # Nombre del Excel final (compatible con dock2profile)
   scores_filename: "01_top_500_molecules.xlsx"
+
+  # Nombre del directorio con mol2 individuales (compatible con dock2profile)
   mol2_dirname: "docked_molecules"
 
+# --- Metadatos de trazabilidad ---
 metadata:
-  source: null
+  source: null                            # "Phermit" | "HTS1710" | "PubChem" | etc.
   date: null
   notes: null

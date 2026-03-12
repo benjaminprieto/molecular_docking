@@ -1,0 +1,76 @@
+# =============================================================================
+# 00e Binding Site Definition - Configuration
+# =============================================================================
+# Identifica el binding site y recorta el receptor PDB para grid generation.
+#
+# Proteinas grandes (>3000 atomos) hacen que sphgen (Fortran) falle.
+# Este modulo recorta rec_noH.pdb a una esfera alrededor del binding site,
+# generando rec_noH_site.pdb que DMS/sphgen pueden manejar.
+#
+# El binding site se define en campaign_config.yaml (grids.binding_site).
+# Este archivo solo controla parametros algoritmicos.
+#
+# INPUT:  05_results/{campaign_id}/00b_receptor_preparation/rec_noH.pdb
+# OUTPUT: 05_results/{campaign_id}/00e_binding_site/
+#
+# Project: molecular_docking
+# Module: 00e
+# Version: 1.0
+# =============================================================================
+
+parameters:
+  # Distancia de contacto para method=reference_ligand (Angstroms)
+  # Residuos con al menos un atomo dentro de esta distancia del ligando
+  # se consideran parte del binding site.
+  # 4.0 = contactos directos (H-bonds, VdW)
+  # 5.0 = incluye segunda esfera (recomendado)
+  # 6.0 = conservador
+  contact_cutoff: 5.0
+
+  # Radio de recorte del PDB (Angstroms desde el centroide)
+  # El PDB recortado se usa SOLO para DMS/sphgen (pasos 1-2 de 01a).
+  # El grid y docking usan el receptor completo (rec_charged.mol2).
+  # 20.0 = compacto (~2000-3000 atomos para sitio tipico)
+  # 25.0 = recomendado (margen amplio para esferas)
+  # 30.0 = conservador
+  trim_radius: 25.0
+
+  # Mantener residuos completos en el PDB recortado
+  # Si true: incluye TODOS los atomos de residuos que tocan la esfera
+  # Si false: solo atomos individuales dentro del radio (puede romper residuos)
+  keep_whole_residues: true
+
+  # Log level
+  log_level: "INFO"
+
+# -----------------------------------------------------------------------------
+# OUTPUT
+# -----------------------------------------------------------------------------
+outputs:
+  subdir: "00e_binding_site"
+
+  # Archivos generados:
+  #   rec_noH_site.pdb           -> PDB recortado (input para 01a)
+  #   binding_site_report.json   -> reporte completo
+  #   binding_site_summary.txt   -> resumen legible
+  #   00e_binding_site.log       -> log completo
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/00e_binding_site_definition.py \
+#     --config 03_configs/00e_binding_site_definition.yaml \
+#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#
+# # Override trim radius:
+# python 02_scripts/00e_binding_site_definition.py \
+#     --config 03_configs/00e_binding_site_definition.yaml \
+#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml \
+#     --trim-radius 30.0
+#
+# # Direct mode with explicit residues:
+# python 02_scripts/00e_binding_site_definition.py \
+#     --receptor 05_results/my_campaign/00b_receptor_preparation/rec_noH.pdb \
+#     --residues GLU529 TRP555 CYS574 \
+#     --trim-radius 25.0
+# =============================================================================
