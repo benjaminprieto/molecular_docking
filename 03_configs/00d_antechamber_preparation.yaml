@@ -1,0 +1,72 @@
+# =============================================================================
+# 00d Antechamber Preparation - Configuration
+# =============================================================================
+# Convierte SDF protonados de 00c en mol2 DOCK6-ready.
+#
+# antechamber asigna:
+#   - Cargas parciales AM1-BCC (estándar para DOCK6)
+#   - Atom types GAFF2 (compatible con DOCK6 vdw_AMBER_parm99.defn)
+#
+# Si antechamber falla (molécula compleja, timeout), opcionalmente usa
+# OpenBabel con cargas Gasteiger como fallback.
+#
+# INPUT: 05_results/{campaign_id}/00c_ionization_profiling/{run_id}/structures/pH{value}/*.sdf
+# OUTPUT: 05_results/{campaign_id}/00d_antechamber/
+#
+# Project: molecular_docking
+# Module: 00d
+# Version: 1.0
+# =============================================================================
+
+parameters:
+  # Método de carga para antechamber
+  # "bcc"  -> AM1-BCC (estándar DOCK6, preciso, ~1-5 min por molécula)
+  # "gas"  -> Gasteiger (rápido, ~1s, menos preciso)
+  charge_method: "bcc"
+
+  # Tipo de átomo
+  # "gaff2" -> General AMBER Force Field v2 (recomendado)
+  # "gaff"  -> General AMBER Force Field v1
+  atom_type: "gaff2"
+
+  # Si antechamber falla, intentar con OpenBabel (Gasteiger)
+  obabel_fallback: true
+
+  # Timeout por molécula (segundos)
+  # Moléculas grandes (>50 heavy atoms) pueden necesitar más tiempo
+  timeout_per_molecule: 300
+
+  # Log level
+  log_level: "INFO"
+
+# -----------------------------------------------------------------------------
+# OUTPUT
+# -----------------------------------------------------------------------------
+outputs:
+  subdir: "00d_antechamber"
+
+  # Archivos generados:
+  #   mol2/{name}.mol2                -> DOCK6-ready (input para 01b)
+  #   antechamber_summary.csv         -> status por molécula
+  #   antechamber_summary.txt         -> resumen legible
+  #   00d_antechamber.log             -> log completo
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# # Auto-detectar SDF de 00c:
+# python 02_scripts/00d_antechamber_preparation.py \
+#     --config 03_configs/00d_antechamber_preparation.yaml \
+#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#
+# # SDF directory explícito:
+# python 02_scripts/00d_antechamber_preparation.py \
+#     --config 03_configs/00d_antechamber_preparation.yaml \
+#     --sdf-dir 05_results/example_campaign/00c_ionization_profiling/20260310/structures/pH72
+#
+# # Gasteiger rápido:
+# python 02_scripts/00d_antechamber_preparation.py \
+#     --config 03_configs/00d_antechamber_preparation.yaml \
+#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml \
+#     --charge-method gas
+# =============================================================================
