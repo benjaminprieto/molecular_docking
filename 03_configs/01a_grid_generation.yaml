@@ -10,6 +10,7 @@ parameters:
   repulsive_exponent: 12
   dielectric_factor: 4
   bump_overlap: 0.75
+  dock6_home: "/opt/dock6"            # DOCK6 installation path
   log_level: "INFO"
 outputs:
   subdir: "01a_grid_generation"

@@ -1,5 +1,5 @@
 # =============================================================================
-# Campaign Configuration Template
+# Campaign Configuration — example_campaign
 # =============================================================================
 # Fuente de verdad para una campaña de docking.
 # Equivalente a cavity_config.yaml en dock2profile.
@@ -9,7 +9,7 @@
 # NOTA: Copiar a 04_data/campaigns/{campaign_id}/ y editar.
 #
 # Project: molecular_docking
-# Version: 1.0
+# Version: 1.1 (2026-03-13)
 # =============================================================================
 
 # --- Identidad ---
@@ -24,17 +24,19 @@ receptor:
   # Chain(s) a conservar (null = todas)
   chain: null
 
-  # Protonación del receptor (OPCIONAL)
-  # Si enabled=false, se usa prepared_mol2 directamente.
-  # Si enabled=true, se protona con la herramienta indicada al docking_ph.
+  # Protonación del receptor
+  # Strategies (v2.0 — ChimeraX backbone):
+  #   pdb2pqr  -> PDB2PQR+PROPKA + ChimeraX mol2 (RECOMENDADA)
+  #   chimerax -> ChimeraX DockPrep directo
+  #   obabel   -> OpenBabel fallback (NO RECOMENDADA)
   protonation:
-    enabled: true                        # true = protonar con herramienta
-    tool: "pdb2pqr"                       # pdb2pqr | reduce | obabel
-    force_field: "AMBER"                  # AMBER | CHARMM | PARSE (para pdb2pqr)
+    enabled: true
+    tool: "pdb2pqr"
+    force_field: "AMBER"
 
   # mol2 pre-preparado (si ya tienes receptor listo para DOCK6)
   # Si protonation.enabled=true, este campo se ignora.
-  prepared_mol2: null                     # e.g., "receptor/rec_charged.mol2"
+  prepared_mol2: null
 
   # Opciones de limpieza del PDB
   remove_water: true
@@ -56,22 +58,25 @@ molecules:
   input_file: "molecules/"
 
   # Para CSV/XLSX: columnas con nombre y SMILES
-  name_column: "Name"                     # null = auto-detect
-  smiles_column: "Smile"                  # null = auto-detect
+  name_column: "Name"
+  smiles_column: "Smile"
 
   # Para SDF: cómo extraer el nombre de la molécula
-  # "header_first_word" = primera palabra del header (e.g., MolPort-047-542-199)
+  # "header_first_word" = primera palabra del header
   # "header_full"       = header completo
   # "property"          = leer de propiedad SDF (ver name_property)
   name_source: "header_first_word"
-  name_property: "_Name"                  # Solo si name_source=property
+  name_property: "_Name"
 
-  # Protonación de ligandos (OPCIONAL)
-  # Si enabled=false, se usa el SMILES tal cual sin modificar.
+  # Protonación de ligandos
+  # Herramientas para ligandos pequeños:
+  #   obabel       -> OpenBabel -p pH (usado por 00c ionization_profiling)
+  #   dimorphite_dl -> Dimorphite-DL (más preciso, requiere instalación aparte)
+  # NOTA: pdb2pqr es para proteínas, NO para ligandos.
   protonation:
-    enabled: true                         # true = protonar con herramienta
-    tool: "obabel"                        # dimorphite_dl | obabel
-    obabel_fallback: true                 # Si dimorphite falla, intentar obabel
+    enabled: true
+    tool: "obabel"
+    obabel_fallback: true
 
 # --- Grids DOCK6 ---
 grids:
@@ -83,7 +88,6 @@ grids:
   bump_grid: "grid.bmp"
 
   # Generación de grids (si no existen)
-  # Si generate=true Y no hay grids válidos en grid_dir, se generan.
   generate: true
 
   # Definición del binding site (solo si generate=true)
@@ -92,16 +96,17 @@ grids:
   #   residues          → centroide de residuos clave (no necesita ligando)
   #   coordinates       → punto (x, y, z) explícito
   binding_site:
-    method: "reference_ligand"                    # reference_ligand | residues | coordinates
+    method: "reference_ligand"
 
     # Método A: reference_ligand
+    # IMPORTANTE: usar UDX.mol2 (cristalográfico), NO UDX_mol2.mol2 (coords regeneradas)
     reference_mol2: "molecules/UDX.mol2"
 
     # Método B: residues (centroide se calcula automáticamente)
-    # residues: []
-    #  - "GLU529"
-    #  - "TRP555"
-    #  - "CYS574"
+    # residues:
+    #   - "GLU529"
+    #   - "TRP555"
+    #   - "CYS574"
 
     # Método C: coordenadas explícitas
     # center: [10.5, 15.2, 22.8]
@@ -119,6 +124,6 @@ output:
 
 # --- Metadatos de trazabilidad ---
 metadata:
-  source: null                            # "Phermit" | "HTS1710" | "PubChem" | etc.
+  source: null
   date: null
   notes: null

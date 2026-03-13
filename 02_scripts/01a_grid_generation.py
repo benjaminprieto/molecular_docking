@@ -11,7 +11,7 @@ Binding site methods (from campaign_config.yaml):
   D. (skip)            -> grids already exist in grid_dir
 
 Usage:
-    python 02_scripts/01a_grid_generation.py --config 03_configs/01a_grid_generation.yaml --campaign 04_data/campaigns/my_campaign/campaign_config.yaml
+    python 02_scripts/01a_grid_generation.py --config 03_configs/01a_grid_generation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
     # Force regeneration even if grids exist:
     python 02_scripts/01a_grid_generation.py \\
@@ -181,6 +181,7 @@ def main():
     output_dir = args.output or str(Path("05_results") / campaign_id / "01a_grid_generation")
 
     # --- Run grid generation ---
+    dock6_home = params.get("dock6_home")
     result = run_grid_generation(
         receptor_noH_pdb=str(rec_noH),
         receptor_charged_mol2=str(rec_mol2),
@@ -200,6 +201,7 @@ def main():
         repulsive_exponent=params.get("repulsive_exponent", 12),
         dielectric_factor=params.get("dielectric_factor", 4),
         bump_overlap=params.get("bump_overlap", 0.75),
+        dock6_home=dock6_home,
     )
 
     if result.get("success"):

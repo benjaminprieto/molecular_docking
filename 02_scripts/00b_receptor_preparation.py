@@ -7,15 +7,17 @@ Prepara el receptor para DOCK6: limpieza + protonacion + mol2 con cargas.
 OPCIONAL: Se salta si receptor.protonation.enabled=false.
 Si receptor.prepared_mol2 apunta a un archivo valido, se usa directo.
 
-Strategies:
-  pdb2pqr  -> pH-aware via PROPKA (recomendada para Golgi pH 6.3)
-  reduce   -> AmberTools reduce + tleap ff14SB
-  obabel   -> simple, Gasteiger charges
+Strategies (v2.0 — ChimeraX backbone):
+  pdb2pqr  -> PDB2PQR+PROPKA pKa prediction + ChimeraX mol2 generation
+              (RECOMENDADA para docking a pH no-fisiologico, e.g. Golgi 6.3)
+  chimerax -> ChimeraX DockPrep directo (AddH + addcharge)
+              (buena para pH fisiologico ~7.2)
+  obabel   -> OpenBabel simple, Gasteiger charges (FALLBACK — NO RECOMENDADA)
 
 Reads campaign_config.yaml:
     - receptor.pdb                       -> PDB del receptor
     - receptor.protonation.enabled       -> true/false
-    - receptor.protonation.tool          -> pdb2pqr | reduce | obabel
+    - receptor.protonation.tool          -> pdb2pqr | chimerax | obabel
     - receptor.protonation.force_field   -> AMBER | CHARMM | PARSE
     - receptor.prepared_mol2             -> mol2 pre-preparado (skip)
     - receptor.chain                     -> chain(s) a conservar
@@ -23,38 +25,36 @@ Reads campaign_config.yaml:
     - receptor.remove_hetatm             -> true/false
     - docking_ph                         -> pH de protonacion
 
-Reads module YAML (03_configs/00b_receptor_preparation.yaml):
-    - remove_alt_conformations
-    - complete_sidechains (futuro)
-
 Output: 05_results/{campaign_id}/00b_receptor_preparation/
-    - rec_charged.mol2       (DOCK6-ready)
+    - rec_charged.mol2       (DOCK6-ready: Sybyl types + AMBER ff14SB charges)
     - rec_noH.pdb            (para DMS surface en 01a)
     - receptor_clean.pdb
+    - chimerax.log           (log de ChimeraX, si aplica)
     - protonation_report.json
     - protonation_summary.txt
     - 00b_receptor_preparation.log
 
 Usage:
+    # Recommended (PDB2PQR + ChimeraX):
     python 02_scripts/00b_receptor_preparation.py \\
         --config 03_configs/00b_receptor_preparation.yaml \\
-        --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml
+        --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
     # Override pH:
     python 02_scripts/00b_receptor_preparation.py \\
         --config 03_configs/00b_receptor_preparation.yaml \\
-        --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml \\
+        --campaign 04_data/campaigns/example_campaign/campaign_config.yaml \\
         --ph 6.3
 
-    # Override tool:
+    # ChimeraX only (no PDB2PQR):
     python 02_scripts/00b_receptor_preparation.py \\
         --config 03_configs/00b_receptor_preparation.yaml \\
-        --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml \\
-        --tool pdb2pqr --ph 6.3
+        --campaign 04_data/campaigns/example_campaign/campaign_config.yaml \\
+        --tool chimerax
 
 Project: molecular_docking
 Module: 00b
-Version: 1.0
+Version: 2.0 — ChimeraX rewrite (2026-03-13)
 """
 
 import argparse
@@ -113,7 +113,7 @@ def main():
     parser.add_argument("--ph", type=float, default=None,
                         help="Docking pH (overrides campaign)")
     parser.add_argument("--tool", type=str, default=None,
-                        choices=["pdb2pqr", "reduce", "obabel"],
+                        choices=["pdb2pqr", "chimerax", "obabel"],
                         help="Protonation tool (overrides campaign)")
     parser.add_argument("--force-field", type=str, default=None,
                         choices=["AMBER", "CHARMM", "PARSE"],
@@ -226,6 +226,7 @@ def main():
 
     logger.info("=" * 60)
     logger.info("  MOLECULAR_DOCKING - Module 00b: Receptor Preparation")
+    logger.info("  Version 2.0 (ChimeraX backbone)")
     logger.info("=" * 60)
     logger.info(f"Campaign:     {campaign_id}")
 
@@ -288,8 +289,8 @@ def main():
     logger.info(f"  rec_charged.mol2: {result['rec_charged_mol2']}")
     logger.info(f"  rec_noH.pdb:      {result['rec_noH_pdb']}")
     logger.info(f"{'=' * 60}")
-    logger.info(f"Next: python 02_scripts/00c_ligand_preparation.py "
-                f"--config 03_configs/00c_ligand_preparation.yaml "
+    logger.info(f"Next: python 02_scripts/00c_ionization_profiling.py "
+                f"--config 03_configs/00c_ionization_profiling.yaml "
                 f"--campaign {args.campaign or '<campaign_config.yaml>'}")
 
     return 0

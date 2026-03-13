@@ -496,44 +496,88 @@ def generate_grid(
         dielectric_factor: int = 4,
         bump_overlap: float = 0.75,
         vdw_defn_file: Optional[str] = None,
+        dock6_home: Optional[str] = None,
 ) -> Optional[Dict[str, str]]:
     """
     Generate energy and bump grids using grid program.
 
     This is the most time-consuming step (~5-45 min depending on box size).
+
+    Args:
+        dock6_home: Path to DOCK6 installation (e.g. /opt/dock6).
+                    Used to find parameter files. Takes priority over
+                    environment variables.
     """
-    # Find vdw definition file
+    import os
+
+    # Find vdw definition file — search order:
+    # 1. Explicit dock6_home from config YAML
+    # 2. Environment variables (DOCK_HOME, DOCK6_HOME, DOCK_BASE)
+    # 3. Relative to grid binary
+    # 4. Common install paths
     if vdw_defn_file is None:
-        import os
+        search_paths = []
+
+        # 1. From config
+        if dock6_home:
+            search_paths.append(Path(dock6_home) / "parameters")
+
+        # 2. Environment variables
         for var in ["DOCK_HOME", "DOCK6_HOME", "DOCK_BASE"]:
             val = os.environ.get(var)
             if val:
-                candidate = Path(val) / "parameters" / "vdw_AMBER_parm99.defn"
-                if candidate.exists():
-                    vdw_defn_file = str(candidate)
-                    break
-        # Try relative to grid binary
+                search_paths.append(Path(val) / "parameters")
+
+        # 3. Relative to grid binary
+        try:
+            grid_which = subprocess.run(
+                ["which", "grid"], capture_output=True, text=True, timeout=5,
+            ).stdout.strip()
+            if grid_which:
+                search_paths.append(Path(grid_which).resolve().parent.parent / "parameters")
+        except Exception:
+            pass
+
+        # 4. Common install paths
+        search_paths.extend([
+            Path("/opt/dock6/parameters"),
+            Path("/usr/local/dock6/parameters"),
+            Path.home() / "dock6" / "parameters",
+        ])
+
+        for search_dir in search_paths:
+            candidate = search_dir / "vdw_AMBER_parm99.defn"
+            if candidate.exists():
+                vdw_defn_file = str(candidate.resolve())
+                logger.info(f"    vdw_defn_file: {vdw_defn_file}")
+                break
+
         if vdw_defn_file is None:
-            try:
-                grid_which = subprocess.run(
-                    ["which", "grid"], capture_output=True, text=True, timeout=5,
-                ).stdout.strip()
-                if grid_which:
-                    candidate = Path(grid_which).resolve().parent.parent / "parameters" / "vdw_AMBER_parm99.defn"
-                    if candidate.exists():
-                        vdw_defn_file = str(candidate)
-            except Exception:
-                pass
-        if vdw_defn_file is None:
-            vdw_defn_file = "vdw_AMBER_parm99.defn"
+            logger.error("    vdw_AMBER_parm99.defn not found.")
+            logger.error("    Set dock6_home in 03_configs/01a_grid_generation.yaml")
+            logger.error(f"    Searched: {[str(p) for p in search_paths]}")
+            return None
 
-    full_prefix = str(Path(output_dir).resolve() / grid_prefix)
+    # --- Create symlinks in output_dir for short paths ---
+    # ALL DOCK6 programs (including grid) have a Fortran 80-char path limit.
+    # We symlink all input files into the output directory and use filenames only.
+    out = Path(output_dir)
 
-    # grid.in content — use absolute paths
-    receptor_abs = str(Path(receptor_charged_mol2).resolve())
-    box_abs = str(Path(box_path).resolve())
-    vdw_abs = str(Path(vdw_defn_file).resolve()) if "/" in vdw_defn_file or "\\" in vdw_defn_file else vdw_defn_file
+    receptor_link = out / "rec_charged.mol2"
+    box_file = out / "grid.box"  # already here from step 4
+    vdw_link = out / "vdw_AMBER_parm99.defn"
 
+    # Symlink receptor mol2
+    if not receptor_link.exists():
+        receptor_link.symlink_to(Path(receptor_charged_mol2).resolve())
+        logger.debug(f"    Symlinked: rec_charged.mol2 -> {receptor_charged_mol2}")
+
+    # Symlink vdw definition file
+    if not vdw_link.exists():
+        vdw_link.symlink_to(Path(vdw_defn_file).resolve())
+        logger.debug(f"    Symlinked: vdw_AMBER_parm99.defn -> {vdw_defn_file}")
+
+    # grid.in content — ALL filenames only (no paths > 80 chars)
     grid_in_content = f"""\
 compute_grids                  yes
 grid_spacing                   {grid_spacing}
@@ -548,13 +592,14 @@ distance_dielectric            yes
 dielectric_factor              {dielectric_factor}
 bump_filter                    yes
 bump_overlap                   {bump_overlap}
-receptor_file                  {receptor_abs}
-box_file                       {box_abs}
-vdw_definition_file            {vdw_abs}
-score_grid_prefix              {full_prefix}
+allow_non_integral_charges     yes
+receptor_file                  rec_charged.mol2
+box_file                       grid.box
+vdw_definition_file            vdw_AMBER_parm99.defn
+score_grid_prefix              grid
 """
 
-    grid_in_path = Path(output_dir) / "grid.in"
+    grid_in_path = out / "grid.in"
     grid_in_path.write_text(grid_in_content)
 
     logger.info(f"  Step 5: Grid calculation (spacing={grid_spacing} A)")
@@ -562,14 +607,14 @@ score_grid_prefix              {full_prefix}
 
     try:
         result = subprocess.run(
-            ["grid", "-i", str(grid_in_path.resolve()), "-o", str((Path(output_dir) / "grid.out").resolve())],
+            ["grid", "-i", "grid.in", "-o", "grid.out"],
             capture_output=True, text=True,
             timeout=3600,  # 1 hour max
-            cwd=output_dir,
+            cwd=str(out),
         )
 
-        nrg_path = Path(f"{full_prefix}.nrg")
-        bmp_path = Path(f"{full_prefix}.bmp")
+        nrg_path = out / "grid.nrg"
+        bmp_path = out / "grid.bmp"
 
         if nrg_path.exists() and bmp_path.exists():
             logger.info(f"    -> {nrg_path.name} ({nrg_path.stat().st_size} bytes)")
@@ -581,8 +626,11 @@ score_grid_prefix              {full_prefix}
             }
         else:
             logger.error("    grid calculation produced no output")
+            grid_out = out / "grid.out"
+            if grid_out.exists():
+                logger.error(f"    grid.out tail: {grid_out.read_text()[-500:]}")
             if result.stderr:
-                logger.error(f"    {result.stderr[:500]}")
+                logger.error(f"    stderr: {result.stderr[:500]}")
             return None
     except FileNotFoundError:
         logger.error("    grid program not found in PATH")
@@ -617,6 +665,7 @@ def run_grid_generation(
         dielectric_factor: int = 4,
         bump_overlap: float = 0.75,
         vdw_defn_file: Optional[str] = None,
+        dock6_home: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Run the complete DOCK6 grid generation pipeline.
@@ -740,6 +789,7 @@ def run_grid_generation(
         dielectric_factor=dielectric_factor,
         bump_overlap=bump_overlap,
         vdw_defn_file=vdw_defn_file,
+        dock6_home=dock6_home,
     )
     if not grid_result:
         return {"success": False, "error": "Grid calculation failed", "report": report}

@@ -5,30 +5,41 @@ Prepara el receptor para DOCK6: limpieza + protonacion al pH +
 generacion de mol2 con cargas parciales.
 
 DOCK6 requiere:
-  - rec_charged.mol2  (Sybyl atom types + partial charges)
+  - rec_charged.mol2  (Sybyl atom types + AMBER partial charges)
   - rec_noH.pdb       (sin H, para DMS surface en 01a)
 
-Strategies (sin Chimera):
-  A. pdb2pqr  → pH-aware via PROPKA, AMBER charges, inyectadas en mol2
-  B. reduce   → AmberTools reduce + tleap ff14SB, cargas extraidas de prmtop
-  C. obabel   → simple, Gasteiger charges (menos preciso pero funcional)
+Strategies:
+  A. pdb2pqr  → PDB2PQR+PROPKA pKa prediction + ChimeraX mol2 generation
+               (recomendada para pH no-fisiologico, e.g. Golgi 6.3)
+  B. chimerax → ChimeraX DockPrep directo (AddH + addcharge)
+               (buena para pH fisiologico ~7.2)
+  C. obabel   → OpenBabel simple, Gasteiger charges (fallback de emergencia)
+               (NO recomendada — ver Practitioner's Guide)
 
-Todas generan mol2 con Sybyl atom types (via obabel) porque DOCK6 usa
-vdw_AMBER_parm99.defn que mapea Sybyl types a parametros VdW.
+ChimeraX genera mol2 con:
+  - Sybyl atom types (C.3, N.am, O.2, etc.) — requeridos por DOCK6
+  - AMBER ff14SB charges (RESP-derived) — el estándar para DOCK6
+  - @<TRIPOS>SUBSTRUCTURE section — requerida por grid program
+  - Molecule name limpio (no paths)
+
+Esto reemplaza completamente el pipeline anterior basado en OpenBabel,
+que tenía 3 problemas críticos:
+  1. Molecule name = full path → DOCK6 lo malinterpretaba (BUG 1)
+  2. Molecule type = SMALL → grid filtraba ATOMs incorrectamente
+  3. Sin @<TRIPOS>SUBSTRUCTURE → grid no podia parsear residuos
 
 Pipeline:
     1. Limpiar PDB (agua, alt conf, HETATM, cadenas)
-    2. Protonar al pH de docking (herramienta segun strategy)
-    3. Generar mol2 con Sybyl types (obabel)
-    4. Inyectar cargas parciales (AMBER o Gasteiger)
-    5. Generar rec_noH.pdb (strip H del protonado)
-    6. Validar outputs
-    7. Generar protonation_report.json
+    2. Protonar al pH de docking (pdb2pqr o chimerax)
+    3. Generar mol2 con ChimeraX (Sybyl types + AMBER charges)
+    4. Generar rec_noH.pdb (strip H del protonado)
+    5. Validar outputs
+    6. Generar protonation_report.json
 
 Location: 01_src/molecular_docking/m00_preparation/receptor_preparation.py
 Project: molecular_docking
 Module: 00b (core)
-Version: 1.0
+Version: 2.0 — ChimeraX rewrite (2026-03-13)
 """
 
 import json
@@ -43,6 +54,135 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple, Union
 
 logger = logging.getLogger(__name__)
+
+# ChimeraX binary — installed on the server
+CHIMERAX_BIN = "/usr/bin/chimerax-daily"
+
+
+# =============================================================================
+# MOL2 SANITIZATION (defensive — ChimeraX should produce clean mol2,
+# but we keep these as safety nets for edge cases and obabel fallback)
+# =============================================================================
+
+def _fix_mol2_molecule_name(mol2_path: str, name: str = "receptor"):
+    """
+    Fix the mol2 MOLECULE section for DOCK6 compatibility.
+
+    OpenBabel generates mol2 files with two issues for DOCK6:
+      1. Line 2 (molecule name): writes the full input path instead of a name.
+         DOCK6 tries to open this path as a file.
+      2. Line 4 (molecule type): writes "SMALL" for everything.
+         DOCK6's grid program expects "PROTEIN" for receptor mol2 files
+         and filters ATOM records by this type.
+
+    ChimeraX handles both correctly, but we call this as a safety net
+    after every mol2 generation — cheap and defensive.
+
+    mol2 @<TRIPOS>MOLECULE format:
+      Line 1: @<TRIPOS>MOLECULE
+      Line 2: molecule name
+      Line 3: num_atoms num_bonds num_subst num_feat num_sets
+      Line 4: molecule type (SMALL | PROTEIN | BIOPOLYMER | ...)
+      Line 5: charge type (GASTEIGER | NO_CHARGES | ...)
+    """
+    path = Path(mol2_path)
+    if not path.exists():
+        return
+
+    lines = path.read_text().split("\n")
+    modified = False
+
+    for i, line in enumerate(lines):
+        if "@<TRIPOS>MOLECULE" in line:
+            # Fix molecule name (line i+1)
+            if i + 1 < len(lines):
+                old_name = lines[i + 1].strip()
+                lines[i + 1] = name
+                if old_name != name:
+                    logger.debug(f"    Fixed mol2 name: '{old_name}' -> '{name}'")
+                    modified = True
+
+            # Fix molecule type (line i+3): SMALL -> PROTEIN
+            if i + 3 < len(lines):
+                old_type = lines[i + 3].strip()
+                if old_type == "SMALL":
+                    lines[i + 3] = "PROTEIN"
+                    logger.debug(f"    Fixed mol2 type: SMALL -> PROTEIN")
+                    modified = True
+            break
+
+    if modified:
+        path.write_text("\n".join(lines))
+
+
+def _add_mol2_substructure(mol2_path: str):
+    """
+    Add @<TRIPOS>SUBSTRUCTURE section to a mol2 file if missing.
+
+    DOCK6 requires the SUBSTRUCTURE section to parse protein receptors.
+    ChimeraX generates this automatically; this is a safety net for the
+    obabel fallback strategy.
+    """
+    path = Path(mol2_path)
+    if not path.exists():
+        return
+
+    text = path.read_text()
+
+    # Skip if SUBSTRUCTURE already exists
+    if "@<TRIPOS>SUBSTRUCTURE" in text:
+        return
+
+    # Parse residues from ATOM section
+    residues = {}  # subst_id -> (subst_name, first_atom_id)
+    in_atom = False
+
+    for line in text.split("\n"):
+        if "@<TRIPOS>ATOM" in line:
+            in_atom = True
+            continue
+        if line.startswith("@<TRIPOS>") and in_atom:
+            break
+        if in_atom and line.strip():
+            parts = line.split()
+            if len(parts) >= 8:
+                atom_id = parts[0]
+                subst_id = parts[6]
+                subst_name = parts[7]
+                if subst_id not in residues:
+                    residues[subst_id] = {
+                        "subst_name": subst_name,
+                        "first_atom": atom_id,
+                    }
+
+    if not residues:
+        logger.warning("    No residues found in mol2 ATOM section")
+        return
+
+    # Update molecule counts (line 3: num_atoms num_bonds num_subst)
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        if "@<TRIPOS>MOLECULE" in line and i + 2 < len(lines):
+            parts = lines[i + 2].split()
+            if len(parts) >= 2:
+                n_atoms = parts[0]
+                n_bonds = parts[1]
+                n_subst = str(len(residues))
+                lines[i + 2] = f" {n_atoms} {n_bonds} {n_subst} 0 0"
+            break
+
+    # Build SUBSTRUCTURE section
+    subst_lines = ["@<TRIPOS>SUBSTRUCTURE"]
+    for subst_id in sorted(residues.keys(), key=lambda x: int(x)):
+        res = residues[subst_id]
+        subst_lines.append(
+            f"{subst_id:>7s} {res['subst_name']:<8s} {res['first_atom']:>7s} "
+            f"RESIDUE           1 A     {res['subst_name']:<8s}"
+        )
+
+    text_out = "\n".join(lines).rstrip("\n") + "\n" + "\n".join(subst_lines) + "\n"
+    path.write_text(text_out)
+    logger.debug(f"    Added SUBSTRUCTURE section: {len(residues)} residues")
 
 
 # =============================================================================
@@ -171,7 +311,10 @@ def strip_hydrogens(input_pdb: str, output_pdb: str) -> int:
                 # Detect hydrogen by element column or atom name
                 is_hydrogen = (
                     element == "H"
-                    or (not element and (atom_name.startswith("H") or atom_name in ("1H", "2H", "3H")))
+                    or (not element and (
+                        atom_name.startswith("H")
+                        or atom_name in ("1H", "2H", "3H")
+                    ))
                 )
                 if is_hydrogen:
                     n_removed += 1
@@ -188,7 +331,7 @@ def strip_hydrogens(input_pdb: str, output_pdb: str) -> int:
 
 
 # =============================================================================
-# PQR CHARGE PARSING
+# PQR CHARGE PARSING (for pdb2pqr strategy)
 # =============================================================================
 
 def parse_pqr_charges(pqr_path: str) -> Dict[str, float]:
@@ -256,9 +399,7 @@ def inject_charges_into_mol2(
             parts = line.split()
             if len(parts) >= 9:
                 atom_name = parts[1]
-                # parts[7] = subst_name like "ALA123" or "123" or "1"
                 subst_name = parts[7] if len(parts) > 7 else ""
-                # Extract residue number from subst_name
                 res_match = re.search(r"(\d+)", subst_name)
                 res_num = res_match.group(1) if res_match else "0"
 
@@ -267,15 +408,13 @@ def inject_charges_into_mol2(
                 for chain in ["A", "B", "C", "D", ""]:
                     key = f"{chain}:{res_num}:{atom_name}"
                     if key in charges:
-                        # Replace charge (last column before newline)
-                        new_charge = f"{charges[key]:>10.4f}"
-                        # Reconstruct line preserving alignment
-                        # mol2 ATOM format: id name x y z type resid resname charge
                         parts[8] = f"{charges[key]:.4f}"
                         line = (
                             f"{parts[0]:>7s} {parts[1]:<8s} "
-                            f"{float(parts[2]):>10.4f}{float(parts[3]):>10.4f}{float(parts[4]):>10.4f} "
-                            f"{parts[5]:<8s} {parts[6]:>5s} {parts[7]:<8s} {charges[key]:>10.4f}"
+                            f"{float(parts[2]):>10.4f}{float(parts[3]):>10.4f}"
+                            f"{float(parts[4]):>10.4f} "
+                            f"{parts[5]:<8s} {parts[6]:>5s} {parts[7]:<8s} "
+                            f"{charges[key]:>10.4f}"
                         )
                         n_matched += 1
                         matched = True
@@ -291,7 +430,133 @@ def inject_charges_into_mol2(
 
 
 # =============================================================================
-# STRATEGY A: PDB2PQR (pH-aware, recommended)
+# CHIMERAX MOL2 GENERATION
+# =============================================================================
+
+def _find_chimerax() -> Optional[str]:
+    """
+    Find ChimeraX binary. Search order:
+      1. Module constant CHIMERAX_BIN (/usr/bin/chimerax-daily)
+      2. chimerax-daily in PATH
+      3. chimerax in PATH
+      4. ChimeraX in PATH
+
+    Returns path to binary or None.
+    """
+    # 1. Module constant
+    if Path(CHIMERAX_BIN).exists():
+        return CHIMERAX_BIN
+
+    # 2-4. Search PATH
+    for name in ["chimerax-daily", "chimerax", "ChimeraX"]:
+        result = shutil.which(name)
+        if result:
+            return result
+
+    return None
+
+
+def _run_chimerax_mol2(
+        input_pdb: str,
+        output_mol2: str,
+        add_hydrogens: bool = True,
+        chimerax_bin: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Generate a DOCK6-ready mol2 using ChimeraX.
+
+    ChimeraX produces mol2 with:
+      - Sybyl atom types (C.3, N.am, O.2, etc.)
+      - AMBER ff14SB partial charges
+      - @<TRIPOS>SUBSTRUCTURE section
+      - Clean molecule name
+
+    Args:
+        input_pdb: Path to PDB file (clean or protonated)
+        output_mol2: Path for output mol2
+        add_hydrogens: If True, run addh before addcharge.
+                       Set False if PDB already has correct H (e.g. from PDB2PQR).
+        chimerax_bin: Path to ChimeraX binary (auto-detected if None)
+
+    Returns:
+        Dict with success, mol2_path, chimerax_log
+    """
+    chimerax = chimerax_bin or _find_chimerax()
+    if not chimerax:
+        return {
+            "success": False,
+            "error": "ChimeraX not found. Install ChimeraX or set CHIMERAX_BIN.",
+        }
+
+    input_path = Path(input_pdb).resolve()
+    output_path = Path(output_mol2).resolve()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Build ChimeraX command sequence
+    cmds = [f"open {input_path}"]
+
+    if add_hydrogens:
+        # addh with hbond consideration for better HIS assignment
+        cmds.append("addh")
+
+    # Assign AMBER ff14SB charges (standard residues) + AM1-BCC (nonstandard)
+    cmds.append("addcharge")
+
+    # Save as mol2 with Sybyl types
+    cmds.append(f"save {output_path} format mol2")
+    cmds.append("exit")
+
+    cmd_string = "; ".join(cmds)
+
+    logger.info(f"  ChimeraX: generating mol2 with AMBER charges")
+    logger.debug(f"    Command: {chimerax} --nogui --cmd \"{cmd_string}\"")
+
+    try:
+        result = subprocess.run(
+            [chimerax, "--nogui", "--cmd", cmd_string],
+            capture_output=True,
+            text=True,
+            timeout=600,  # 10 min — large proteins can be slow
+        )
+
+        chimerax_log = (result.stdout or "") + "\n" + (result.stderr or "")
+
+        if not output_path.exists() or output_path.stat().st_size == 0:
+            logger.error("    ChimeraX did not produce mol2 output")
+            if result.stderr:
+                logger.error(f"    stderr: {result.stderr[:500]}")
+            return {
+                "success": False,
+                "error": "ChimeraX produced no mol2 output",
+                "chimerax_log": chimerax_log,
+            }
+
+        logger.info(f"    -> {output_path.name} ({output_path.stat().st_size} bytes)")
+
+        # Defensive sanitization (ChimeraX should be clean, but just in case)
+        _fix_mol2_molecule_name(str(output_path))
+        _add_mol2_substructure(str(output_path))
+
+        return {
+            "success": True,
+            "mol2_path": str(output_path),
+            "chimerax_log": chimerax_log,
+        }
+
+    except FileNotFoundError:
+        return {
+            "success": False,
+            "error": f"ChimeraX binary not found at: {chimerax}",
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "error": "ChimeraX timed out (>600s). Very large protein?",
+        }
+
+
+# =============================================================================
+# STRATEGY A: PDB2PQR + ChimeraX (RECOMMENDED)
 # =============================================================================
 
 def prepare_with_pdb2pqr(
@@ -301,15 +566,25 @@ def prepare_with_pdb2pqr(
         force_field: str = "AMBER",
 ) -> Dict[str, Any]:
     """
-    Protonate receptor using PDB2PQR + PROPKA and generate DOCK6 mol2.
+    Protonate receptor using PDB2PQR+PROPKA, then generate mol2 via ChimeraX.
+
+    This is the RECOMMENDED strategy because:
+      - PROPKA predicts per-residue pKa values (pH-aware)
+      - ChimeraX generates proper Sybyl types + AMBER ff14SB charges
+      - No OpenBabel involved (eliminates BUG 1, BUG 2, BUG 3)
 
     Pipeline:
       1. pdb2pqr --ff=AMBER --titration-state-method=propka --with-ph=X
-      2. obabel: protonated PDB -> mol2 (Sybyl types)
-      3. Inject AMBER charges from PQR into mol2
+         → protonated PDB + PQR with AMBER charges
+      2. ChimeraX: open protonated PDB → addcharge (no addh — H already present)
+         → save mol2 (Sybyl types + AMBER ff14SB charges)
 
-    This is the most accurate method for pH-specific docking because
-    PROPKA predicts per-residue pKa values.
+    Why not inject PQR charges into ChimeraX mol2?
+      PDB2PQR outputs PQR-format AMBER charges, and ChimeraX assigns
+      ff14SB charges from its own templates. Both are AMBER-derived and
+      nearly identical for standard residues. We use ChimeraX's charges
+      because they're self-consistent with its atom typing. The PQR is
+      kept for reference and PROPKA pKa reporting.
     """
     output_dir = Path(output_dir)
     pqr_path = output_dir / "receptor.pqr"
@@ -341,7 +616,11 @@ def prepare_with_pdb2pqr(
             return {"success": False, "error": "PDB2PQR failed", "tool": "pdb2pqr"}
 
         if not pqr_path.exists():
-            return {"success": False, "error": "PDB2PQR produced no PQR output", "tool": "pdb2pqr"}
+            return {
+                "success": False,
+                "error": "PDB2PQR produced no PQR output",
+                "tool": "pdb2pqr",
+            }
 
     except FileNotFoundError:
         return {"success": False, "error": "pdb2pqr not found in PATH", "tool": "pdb2pqr"}
@@ -352,39 +631,40 @@ def prepare_with_pdb2pqr(
     if protonated_pdb.exists():
         logger.info(f"    Protonated PDB: {protonated_pdb.name}")
 
-    # --- Step 2: Generate mol2 with Sybyl types via obabel ---
-    # Use the protonated PDB if available, else PQR
-    source_for_mol2 = str(protonated_pdb) if protonated_pdb.exists() else str(clean_pdb)
-    mol2_gasteiger = output_dir / "rec_sybyl_gasteiger.mol2"
-
-    logger.info("  obabel: PDB -> mol2 (Sybyl atom types)")
-    obabel_cmd = [
-        "obabel", source_for_mol2,
-        "-O", str(mol2_gasteiger),
-        "--partialcharge", "gasteiger",
-    ]
-    try:
-        ob_result = subprocess.run(obabel_cmd, capture_output=True, text=True, timeout=120)
-        if ob_result.returncode != 0 or not mol2_gasteiger.exists():
-            return {"success": False, "error": "obabel mol2 conversion failed", "tool": "pdb2pqr"}
-    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-        return {"success": False, "error": f"obabel failed: {e}", "tool": "pdb2pqr"}
-
-    # --- Step 3: Inject AMBER charges from PQR ---
-    logger.info("  Injecting AMBER charges from PQR into mol2...")
-    charges = parse_pqr_charges(str(pqr_path))
+    # --- Step 2: Generate mol2 via ChimeraX ---
+    # Use protonated PDB (H already at correct pH states).
+    # addh=False because PDB2PQR already added correct hydrogens.
+    source_pdb = str(protonated_pdb) if protonated_pdb.exists() else clean_pdb
+    add_h = not protonated_pdb.exists()  # Only add H if PDB2PQR didn't produce PDB
 
     rec_charged = output_dir / "rec_charged.mol2"
-    n_matched, n_total = inject_charges_into_mol2(
-        str(mol2_gasteiger), charges, str(rec_charged),
+
+    chimerax_result = _run_chimerax_mol2(
+        input_pdb=source_pdb,
+        output_mol2=str(rec_charged),
+        add_hydrogens=add_h,
     )
 
-    match_pct = (n_matched / n_total * 100) if n_total > 0 else 0
-    logger.info(f"    Charges injected: {n_matched}/{n_total} atoms ({match_pct:.1f}%)")
+    if not chimerax_result.get("success"):
+        # Fallback: try with clean PDB + addh
+        logger.warning("    ChimeraX failed with protonated PDB, trying with clean PDB + addh...")
+        chimerax_result = _run_chimerax_mol2(
+            input_pdb=clean_pdb,
+            output_mol2=str(rec_charged),
+            add_hydrogens=True,
+        )
 
-    if match_pct < 50:
-        logger.warning(f"    Low charge match rate ({match_pct:.1f}%). "
-                       "Residue numbering may differ between PQR and mol2.")
+    if not chimerax_result.get("success"):
+        return {
+            "success": False,
+            "error": f"ChimeraX mol2 generation failed: {chimerax_result.get('error')}",
+            "tool": "pdb2pqr",
+        }
+
+    # Save ChimeraX log for debugging
+    chimerax_log_path = output_dir / "chimerax.log"
+    if chimerax_result.get("chimerax_log"):
+        chimerax_log_path.write_text(chimerax_result["chimerax_log"])
 
     # --- Parse PROPKA results ---
     propka_report = _parse_propka_log(output_dir)
@@ -395,8 +675,6 @@ def prepare_with_pdb2pqr(
         "rec_charged_mol2": str(rec_charged),
         "pqr_path": str(pqr_path),
         "protonated_pdb": str(protonated_pdb) if protonated_pdb.exists() else None,
-        "charge_match_rate": round(match_pct, 1),
-        "n_pqr_charges": len(charges),
         "propka_report": propka_report,
     }
 
@@ -405,15 +683,16 @@ def _parse_propka_log(output_dir: Path) -> Dict[str, Any]:
     """Try to parse PROPKA pKa predictions from PDB2PQR output."""
     report = {"titratable_residues": []}
 
-    # PDB2PQR may write propka output to various locations
     propka_files = list(output_dir.glob("*.propka")) + list(output_dir.glob("*.pka"))
 
     for propka_file in propka_files:
         try:
             text = propka_file.read_text()
             for line in text.split("\n"):
-                # Look for lines like: "ASP  48 A   3.45"
-                match = re.match(r"\s*(ASP|GLU|HIS|LYS|CYS|TYR)\s+(\d+)\s+(\S+)\s+([\d.]+)", line)
+                match = re.match(
+                    r"\s*(ASP|GLU|HIS|LYS|CYS|TYR)\s+(\d+)\s+(\S+)\s+([\d.]+)",
+                    line,
+                )
                 if match:
                     report["titratable_residues"].append({
                         "residue": match.group(1),
@@ -428,144 +707,87 @@ def _parse_propka_log(output_dir: Path) -> Dict[str, Any]:
 
 
 # =============================================================================
-# STRATEGY B: reduce + tleap
+# STRATEGY B: ChimeraX only
 # =============================================================================
 
-def prepare_with_reduce(
+def prepare_with_chimerax(
         clean_pdb: str,
         output_dir: str,
         docking_ph: float = 7.2,
 ) -> Dict[str, Any]:
     """
-    Protonate receptor using AmberTools reduce + tleap.
+    Protonate receptor using ChimeraX's built-in AddH + addcharge.
+
+    Simpler than pdb2pqr but less pH-aware:
+      - AddH uses geometry-based rules (not pKa prediction)
+      - HIS assignment based on local H-bonding environment
+      - No PROPKA pKa report
+
+    Good for:
+      - pH ~7.2 (standard protonation is usually correct)
+      - Quick validation runs
+      - When PDB2PQR is not available
 
     Pipeline:
-      1. reduce -build: add hydrogens
-      2. tleap: load with ff14SB, savemol2
-      3. obabel: convert tleap mol2 (AMBER types) -> mol2 (Sybyl types)
-         preserving coordinates and charges
-
-    Note: reduce is less pH-aware than PDB2PQR/PROPKA.
-    HIS protonation is determined by local environment, not pH.
+      ChimeraX: open clean PDB → addh → addcharge → save mol2
     """
     output_dir = Path(output_dir)
-    reduced_pdb = output_dir / "receptor_reduced.pdb"
-
-    # --- Step 1: reduce ---
-    logger.info("  reduce: adding hydrogens")
-    try:
-        result = subprocess.run(
-            ["reduce", "-build", "-nuclear", str(clean_pdb)],
-            capture_output=True, text=True, timeout=120,
-        )
-        # reduce writes to stdout
-        if result.stdout:
-            reduced_pdb.write_text(result.stdout)
-            logger.info(f"    -> {reduced_pdb.name}")
-        else:
-            return {"success": False, "error": "reduce produced no output", "tool": "reduce"}
-    except FileNotFoundError:
-        return {"success": False, "error": "reduce not found in PATH", "tool": "reduce"}
-    except subprocess.TimeoutExpired:
-        return {"success": False, "error": "reduce timed out", "tool": "reduce"}
-
-    # --- Step 2: tleap -> prmtop (for charges) + mol2 ---
-    logger.info("  tleap: assigning ff14SB charges")
-    tleap_mol2 = output_dir / "rec_tleap.mol2"
-    prmtop = output_dir / "receptor.prmtop"
-    inpcrd = output_dir / "receptor.inpcrd"
-
-    tleap_script = f"""\
-source leaprc.protein.ff14SB
-rec = loadpdb {reduced_pdb}
-savemol2 rec {tleap_mol2} 1
-saveamberparm rec {prmtop} {inpcrd}
-quit
-"""
-    tleap_in = output_dir / "tleap.in"
-    tleap_in.write_text(tleap_script)
-
-    try:
-        result = subprocess.run(
-            ["tleap", "-f", str(tleap_in)],
-            capture_output=True, text=True, timeout=120,
-            cwd=str(output_dir),
-        )
-        # tleap may show warnings but still succeed
-        if not tleap_mol2.exists() or tleap_mol2.stat().st_size == 0:
-            logger.warning("    tleap savemol2 failed, trying obabel fallback")
-    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-        logger.warning(f"    tleap failed: {e}")
-
-    # --- Step 3: Generate Sybyl-typed mol2 via obabel ---
-    # tleap's savemol2 outputs AMBER atom types, not Sybyl.
-    # We use obabel on the reduced PDB to get proper Sybyl types.
     rec_charged = output_dir / "rec_charged.mol2"
 
-    logger.info("  obabel: generating mol2 with Sybyl types")
-    obabel_cmd = [
-        "obabel", str(reduced_pdb),
-        "-O", str(rec_charged),
-        "--partialcharge", "gasteiger",
-    ]
+    logger.info(f"  ChimeraX: protonating + assigning AMBER charges")
 
-    try:
-        ob_result = subprocess.run(obabel_cmd, capture_output=True, text=True, timeout=120)
-        if ob_result.returncode != 0 or not rec_charged.exists():
-            return {"success": False, "error": "obabel conversion failed", "tool": "reduce"}
-    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-        return {"success": False, "error": f"obabel failed: {e}", "tool": "reduce"}
+    chimerax_result = _run_chimerax_mol2(
+        input_pdb=clean_pdb,
+        output_mol2=str(rec_charged),
+        add_hydrogens=True,
+    )
 
-    # If tleap produced charges, inject them
-    if tleap_mol2.exists() and tleap_mol2.stat().st_size > 0:
-        logger.info("  Extracting AMBER charges from tleap mol2...")
-        tleap_charges = _extract_charges_from_mol2(str(tleap_mol2))
-        if tleap_charges:
-            n_matched, n_total = inject_charges_into_mol2(
-                str(rec_charged), tleap_charges, str(rec_charged),
-            )
-            match_pct = (n_matched / n_total * 100) if n_total > 0 else 0
-            logger.info(f"    AMBER charges injected: {n_matched}/{n_total} ({match_pct:.1f}%)")
+    if not chimerax_result.get("success"):
+        return {
+            "success": False,
+            "error": f"ChimeraX failed: {chimerax_result.get('error')}",
+            "tool": "chimerax",
+        }
+
+    # Save ChimeraX log
+    chimerax_log_path = output_dir / "chimerax.log"
+    if chimerax_result.get("chimerax_log"):
+        chimerax_log_path.write_text(chimerax_result["chimerax_log"])
+
+    # Generate a protonated PDB from ChimeraX for rec_noH source
+    protonated_pdb = output_dir / "receptor_protonated.pdb"
+    _chimerax_save_pdb(clean_pdb, str(protonated_pdb))
 
     return {
         "success": True,
-        "tool": "reduce",
+        "tool": "chimerax",
         "rec_charged_mol2": str(rec_charged),
-        "reduced_pdb": str(reduced_pdb),
-        "tleap_mol2": str(tleap_mol2) if tleap_mol2.exists() else None,
-        "prmtop": str(prmtop) if prmtop.exists() else None,
+        "protonated_pdb": str(protonated_pdb) if protonated_pdb.exists() else None,
     }
 
 
-def _extract_charges_from_mol2(mol2_path: str) -> Dict[str, float]:
-    """Extract charges from a mol2 file, keyed by residue:atom_name."""
-    charges = {}
-    in_atom = False
+def _chimerax_save_pdb(input_pdb: str, output_pdb: str):
+    """Save a protonated PDB via ChimeraX (addh + save pdb)."""
+    chimerax = _find_chimerax()
+    if not chimerax:
+        return
 
-    for line in Path(mol2_path).read_text().split("\n"):
-        if "@<TRIPOS>ATOM" in line:
-            in_atom = True
-            continue
-        if line.startswith("@<TRIPOS>") and in_atom:
-            break
-        if in_atom and line.strip():
-            parts = line.split()
-            if len(parts) >= 9:
-                atom_name = parts[1]
-                subst_name = parts[7] if len(parts) > 7 else ""
-                res_match = re.search(r"(\d+)", subst_name)
-                res_num = res_match.group(1) if res_match else "0"
-                try:
-                    charge = float(parts[8])
-                    for chain in ["A", "B", "C", "D", ""]:
-                        charges[f"{chain}:{res_num}:{atom_name}"] = charge
-                except (ValueError, IndexError):
-                    pass
-    return charges
+    input_path = Path(input_pdb).resolve()
+    output_path = Path(output_pdb).resolve()
+
+    cmd_string = f"open {input_path}; addh; save {output_path} format pdb; exit"
+
+    try:
+        subprocess.run(
+            [chimerax, "--nogui", "--cmd", cmd_string],
+            capture_output=True, text=True, timeout=300,
+        )
+    except Exception as e:
+        logger.debug(f"    ChimeraX PDB save failed (non-critical): {e}")
 
 
 # =============================================================================
-# STRATEGY C: obabel (simple)
+# STRATEGY C: OpenBabel (FALLBACK — NOT RECOMMENDED)
 # =============================================================================
 
 def prepare_with_obabel(
@@ -576,15 +798,25 @@ def prepare_with_obabel(
     """
     Protonate receptor using OpenBabel.
 
-    Simple approach: obabel -p pH adds hydrogens, then generates mol2
-    with Gasteiger charges and Sybyl atom types.
+    *** NOT RECOMMENDED — USE ONLY AS LAST RESORT ***
 
-    Less accurate than PDB2PQR for pH-specific protonation,
-    but always works and produces valid DOCK6 input.
+    Problems with OpenBabel for DOCK6 receptor preparation:
+      - Context-independent pKa rules (wrong protonation states)
+      - Writes input path as molecule name (BUG 1)
+      - Sets molecule type to SMALL instead of PROTEIN
+      - Missing @<TRIPOS>SUBSTRUCTURE section
+      - Gasteiger charges (less accurate than AMBER ff14SB)
+
+    We patch all these issues post-hoc, but the protonation quality
+    is fundamentally lower than PDB2PQR or ChimeraX.
+
+    Only use if both ChimeraX and PDB2PQR are unavailable.
     """
     output_dir = Path(output_dir)
     rec_charged = output_dir / "rec_charged.mol2"
 
+    logger.warning("  *** USING OBABEL FALLBACK — NOT RECOMMENDED ***")
+    logger.warning("  Install ChimeraX for proper DOCK6 receptor preparation.")
     logger.info(f"  obabel: protonating at pH {docking_ph} + Gasteiger charges")
 
     cmd = [
@@ -605,6 +837,10 @@ def prepare_with_obabel(
 
     logger.info(f"    -> {rec_charged.name} ({rec_charged.stat().st_size} bytes)")
 
+    # Patch all the obabel issues
+    _fix_mol2_molecule_name(str(rec_charged))
+    _add_mol2_substructure(str(rec_charged))
+
     return {
         "success": True,
         "tool": "obabel",
@@ -623,16 +859,20 @@ def validate_prepared_mol2(mol2_path: Union[str, Path]) -> Dict[str, Any]:
     Checks:
       - File exists and non-empty
       - Has @<TRIPOS>ATOM and @<TRIPOS>BOND sections
+      - Has @<TRIPOS>SUBSTRUCTURE section
       - Reasonable atom count (>100 for a protein)
       - Charges are present (not all zero)
       - Sybyl atom types present (C.3, N.am, O.2, etc.)
+      - Molecule type is PROTEIN (not SMALL)
     """
     result = {
         "exists": False,
         "has_atoms": False,
         "has_bonds": False,
+        "has_substructure": False,
         "has_charges": False,
         "has_sybyl_types": False,
+        "molecule_type": None,
         "n_atoms": 0,
         "n_residues": 0,
         "total_charge": 0.0,
@@ -647,6 +887,15 @@ def validate_prepared_mol2(mol2_path: Union[str, Path]) -> Dict[str, Any]:
     text = path.read_text()
     result["has_atoms"] = "@<TRIPOS>ATOM" in text
     result["has_bonds"] = "@<TRIPOS>BOND" in text
+    result["has_substructure"] = "@<TRIPOS>SUBSTRUCTURE" in text
+
+    # Parse molecule type
+    for i, line in enumerate(text.split("\n")):
+        if "@<TRIPOS>MOLECULE" in line:
+            mol_lines = text.split("\n")
+            if i + 3 < len(mol_lines):
+                result["molecule_type"] = mol_lines[i + 3].strip()
+            break
 
     if result["has_atoms"]:
         in_atom = False
@@ -687,6 +936,7 @@ def validate_prepared_mol2(mol2_path: Union[str, Path]) -> Dict[str, Any]:
         result["has_atoms"]
         and result["has_bonds"]
         and result["has_charges"]
+        and result["has_sybyl_types"]
         and result["n_atoms"] > 50  # A protein should have many atoms
     )
 
@@ -715,7 +965,10 @@ def run_receptor_preparation(
         receptor_pdb: Path to input PDB file
         output_dir: Directory for output files
         docking_ph: pH for protonation
-        protonation_tool: "pdb2pqr" | "reduce" | "obabel"
+        protonation_tool: "pdb2pqr" | "chimerax" | "obabel"
+                          (pdb2pqr uses PROPKA + ChimeraX mol2 generation)
+                          (chimerax uses ChimeraX AddH + addcharge)
+                          (obabel is LAST RESORT only)
         force_field: "AMBER" | "CHARMM" | "PARSE" (for PDB2PQR)
         chain: Chain ID to keep (None = all)
         remove_water: Remove water molecules
@@ -733,7 +986,7 @@ def run_receptor_preparation(
         return {"success": False, "error": f"Receptor PDB not found: {receptor_pdb}"}
 
     logger.info("=" * 60)
-    logger.info("  Receptor Preparation Pipeline")
+    logger.info("  Receptor Preparation Pipeline v2.0 (ChimeraX)")
     logger.info("=" * 60)
     logger.info(f"  Input:   {receptor_pdb.name}")
     logger.info(f"  pH:      {docking_ph}")
@@ -745,6 +998,7 @@ def run_receptor_preparation(
         "input_pdb": str(receptor_pdb),
         "docking_ph": docking_ph,
         "protonation_tool": protonation_tool,
+        "version": "2.0-chimerax",
     }
 
     # --- Step 1: Clean PDB ---
@@ -762,34 +1016,53 @@ def run_receptor_preparation(
     report["clean_stats"] = clean_stats
 
     # --- Step 2: Protonate + generate mol2 ---
-    logger.info(f"\nStep 2: Protonation ({protonation_tool})")
+    logger.info(f"\nStep 2: Protonation + mol2 generation ({protonation_tool})")
+
+    # Check ChimeraX availability upfront for non-obabel strategies
+    chimerax_available = _find_chimerax() is not None
+    if protonation_tool in ("pdb2pqr", "chimerax") and not chimerax_available:
+        logger.warning(f"  ChimeraX not found — cannot use '{protonation_tool}' strategy")
+        logger.warning(f"  Falling back to obabel (NOT RECOMMENDED)")
+        protonation_tool = "obabel"
 
     strategies = {
         "pdb2pqr": lambda: prepare_with_pdb2pqr(
             str(clean_path), str(output_dir), docking_ph, force_field,
         ),
-        "reduce": lambda: prepare_with_reduce(
+        "chimerax": lambda: prepare_with_chimerax(
             str(clean_path), str(output_dir), docking_ph,
         ),
         "obabel": lambda: prepare_with_obabel(
             str(clean_path), str(output_dir), docking_ph,
         ),
+        # Legacy aliases
+        "reduce": lambda: prepare_with_chimerax(
+            str(clean_path), str(output_dir), docking_ph,
+        ),
     }
 
     if protonation_tool not in strategies:
-        return {"success": False,
-                "error": f"Unknown protonation tool: {protonation_tool}. "
-                         f"Options: {list(strategies.keys())}"}
+        return {
+            "success": False,
+            "error": f"Unknown protonation tool: {protonation_tool}. "
+                     f"Options: pdb2pqr, chimerax, obabel",
+        }
 
     prep_result = strategies[protonation_tool]()
 
     if not prep_result.get("success"):
-        # Try fallback to obabel
-        if protonation_tool != "obabel":
-            logger.warning(f"  {protonation_tool} failed, trying obabel fallback...")
-            prep_result = prepare_with_obabel(
-                str(clean_path), str(output_dir), docking_ph,
-            )
+        # Cascade fallback: pdb2pqr -> chimerax -> obabel
+        fallback_order = []
+        if protonation_tool == "pdb2pqr":
+            fallback_order = ["chimerax", "obabel"]
+        elif protonation_tool == "chimerax":
+            fallback_order = ["obabel"]
+
+        for fallback in fallback_order:
+            logger.warning(f"  {protonation_tool} failed, trying {fallback} fallback...")
+            prep_result = strategies[fallback]()
+            if prep_result.get("success"):
+                break
 
     if not prep_result.get("success"):
         report["error"] = prep_result.get("error", "All protonation methods failed")
@@ -806,8 +1079,12 @@ def run_receptor_preparation(
     rec_noH = output_dir / "rec_noH.pdb"
 
     # Source: protonated PDB if available, else clean PDB
-    protonated_pdb = prep_result.get("protonated_pdb") or prep_result.get("reduced_pdb")
-    source_pdb = protonated_pdb if protonated_pdb and Path(protonated_pdb).exists() else str(clean_path)
+    protonated_pdb = prep_result.get("protonated_pdb")
+    source_pdb = (
+        protonated_pdb
+        if protonated_pdb and Path(protonated_pdb).exists()
+        else str(clean_path)
+    )
     strip_hydrogens(source_pdb, str(rec_noH))
 
     # --- Step 4: Validate mol2 ---
@@ -817,13 +1094,23 @@ def run_receptor_preparation(
 
     if validation["valid"]:
         logger.info(f"  VALID: {validation['n_atoms']} atoms, "
-                     f"{validation['n_residues']} residues, "
-                     f"total charge: {validation['total_charge']}")
+                    f"{validation['n_residues']} residues, "
+                    f"total charge: {validation['total_charge']}")
         if validation["has_sybyl_types"]:
             logger.info("  Sybyl atom types: present")
         else:
             logger.warning("  WARNING: Sybyl atom types NOT detected "
                           "(DOCK6 may not score correctly)")
+        if validation["has_substructure"]:
+            logger.info("  SUBSTRUCTURE section: present")
+        else:
+            logger.warning("  WARNING: SUBSTRUCTURE section missing "
+                          "(DOCK6 grid may fail)")
+        if validation.get("molecule_type") == "PROTEIN":
+            logger.info("  Molecule type: PROTEIN")
+        elif validation.get("molecule_type"):
+            logger.warning(f"  WARNING: Molecule type is '{validation['molecule_type']}' "
+                          f"(expected PROTEIN)")
     else:
         logger.warning(f"  WARNING: mol2 validation issues: {validation}")
 
@@ -840,7 +1127,7 @@ def run_receptor_preparation(
     w = 70
     lines = [
         "=" * w,
-        "00b RECEPTOR PREPARATION - SUMMARY",
+        "00b RECEPTOR PREPARATION - SUMMARY (v2.0 ChimeraX)",
         "=" * w,
         "",
         f"Date:              {datetime.now().strftime('%Y-%m-%d %H:%M')}",
@@ -857,6 +1144,8 @@ def run_receptor_preparation(
         f"mol2 residues:     {validation.get('n_residues', 0)}",
         f"Total charge:      {validation.get('total_charge', 0):.2f}",
         f"Sybyl types:       {'yes' if validation.get('has_sybyl_types') else 'NO'}",
+        f"SUBSTRUCTURE:      {'yes' if validation.get('has_substructure') else 'NO'}",
+        f"Molecule type:     {validation.get('molecule_type', 'unknown')}",
         f"Valid:             {'YES' if validation.get('valid') else 'NO'}",
         "",
     ]
@@ -870,7 +1159,6 @@ def run_receptor_preparation(
             "PROPKA pKa Predictions (titratable residues)",
             "-" * w,
         ])
-        # Show residues where protonation state differs from standard
         for res in titratable:
             marker = ""
             if res["residue"] == "HIS" and res["pKa"] > docking_ph:
