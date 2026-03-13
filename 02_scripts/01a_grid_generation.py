@@ -51,6 +51,15 @@ def load_yaml(path):
         return yaml.safe_load(f)
 
 
+def setup_log_file(log_path: Path, log_level: str = "INFO"):
+    """Add file handler to root logger."""
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    fh = logging.FileHandler(str(log_path), encoding="utf-8")
+    fh.setLevel(getattr(logging, log_level.upper(), logging.INFO))
+    fh.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-8s | %(message)s"))
+    logging.getLogger().addHandler(fh)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate DOCK6 grids")
     parser.add_argument("--config", type=str, default=None,
@@ -82,9 +91,9 @@ def main():
     if not args.force and not gc.get("generate", False):
         if validate_existing_grids(
             str(grid_path),
-            gc.get("spheres_file", "selected_spheres.sph"),
-            gc.get("energy_grid", "grid.nrg"),
-            gc.get("bump_grid", "grid.bmp"),
+            gc.get("spheres_file", "spheres_ligand.sph"),
+            gc.get("energy_grid", "ligand.nrg"),
+            gc.get("bump_grid", "ligand.bmp"),
         ):
             logger.info(f"Valid grids found at: {grid_path}")
             logger.info("SKIPPED (use --force to regenerate, or set grids.generate: true)")
@@ -179,6 +188,11 @@ def main():
         params = mc.get("parameters", {})
 
     output_dir = args.output or str(Path("05_results") / campaign_id / "01a_grid_generation")
+
+    # --- Setup log file ---
+    log_level = params.get("log_level", "INFO")
+    log_path = Path(output_dir) / "01a_grid_generation.log"
+    setup_log_file(log_path, log_level)
 
     # --- Run grid generation ---
     dock6_home = params.get("dock6_home")

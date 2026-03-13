@@ -9,29 +9,32 @@ Soporta:
   - Grid-based scoring (vdW + electrostatic)
   - Simplex minimization
 
+DOCK6 path limit:
+  DOCK6 programs (Fortran legacy) truncate file paths at ~80 characters.
+  This module creates symlinks in each molecule's output directory and
+  uses short filenames in dock6.in. dock6 is executed with cwd=mol_out
+  so all paths are relative and short.
+
 Pipeline por molecula:
-    1. Localizar mol2 preparado (de 00c)
-    2. Generar dock6.in con parametros
-    3. Ejecutar dock6 -i dock6.in -o dock6.out
+    1. Crear symlinks en mol_out/ para spheres, grids, param files, ligand
+    2. Generar dock6.in con filenames cortos (no paths absolutos)
+    3. Ejecutar dock6 -i dock6.in -o dock6.out con cwd=mol_out
     4. Verificar output ({name}_scored.mol2)
 
 Input:
-  - mol2 individuales (de 00c: 00c_ligand_preparation/mol2/{name}.mol2)
-  - Grids DOCK6 (pre-existentes o de 01a)
-  - selected_spheres.sph
+  - mol2 individuales (de 00d: 00d_antechamber/mol2/{name}.mol2)
+  - Grids DOCK6 (de 01a o pre-existentes)
+  - spheres_ligand.sph
 
 Output (por molecula):
   - {name}/dock6.in
   - {name}/dock6.out
   - {name}/{name}_scored.mol2
 
-Output (global):
-  - docking_status.csv
-
 Location: 01_src/molecular_docking/m01_docking/dock6_runner.py
 Project: molecular_docking
 Module: 01b (core)
-Version: 1.0
+Version: 2.0 — symlinks for 80-char path limit (2026-03-13)
 """
 
 import logging
@@ -225,6 +228,7 @@ def find_dock6_params() -> Dict[str, str]:
 
     # Common install paths
     search_paths.extend([
+        Path("/opt/dock6/parameters"),
         Path("/usr/local/dock6/parameters"),
         Path.home() / "dock6" / "parameters",
         Path.home() / "software" / "dock6" / "parameters",
@@ -262,7 +266,7 @@ def resolve_grid_prefix(grid_dir: str, energy_grid: str) -> str:
 
     Args:
         grid_dir: Directory containing grid files
-        energy_grid: Energy grid filename (e.g., "grid.nrg")
+        energy_grid: Energy grid filename (e.g., "ligand.nrg")
 
     Returns:
         Full path prefix (without extension)
@@ -290,7 +294,7 @@ def generate_dock6_input(
 
     Args:
         ligand_mol2: Path to ligand mol2 file
-        spheres_file: Path to selected_spheres.sph
+        spheres_file: Path to spheres_ligand.sph
         grid_prefix: Grid prefix (without .nrg/.bmp)
         output_prefix: Prefix for output scored mol2
         output_path: Path to write the dock6.in file
@@ -367,6 +371,80 @@ def generate_dock6_input(
 
 
 # =============================================================================
+# SYMLINK HELPER (80-char path workaround)
+# =============================================================================
+
+def _create_symlink(target: str, link_path: Path) -> bool:
+    """
+    Create a symlink, removing any existing link/file.
+
+    Args:
+        target: Absolute path to the real file
+        link_path: Path where the symlink should be created
+
+    Returns:
+        True if symlink was created successfully
+    """
+    target_path = Path(target).resolve()
+    if not target_path.exists():
+        logger.debug(f"    Symlink target not found: {target_path}")
+        return False
+
+    if link_path.exists() or link_path.is_symlink():
+        link_path.unlink()
+
+    link_path.symlink_to(target_path)
+    return True
+
+
+def _setup_mol_symlinks(
+        mol_out: Path,
+        mol2_file: Path,
+        spheres_file: str,
+        grid_prefix: str,
+        dock6_params: Dict[str, str],
+) -> Dict[str, str]:
+    """
+    Create symlinks in the molecule output directory for all files
+    referenced in dock6.in. Returns a dict of short filenames to use
+    in the dock6.in template.
+
+    This is the fix for DOCK6's 80-character path limit.
+    All symlinks point to resolved absolute paths, and dock6.in
+    uses only the short filenames with cwd=mol_out.
+    """
+    short_names = {}
+
+    # Ligand mol2
+    lig_link = mol_out / mol2_file.name
+    _create_symlink(str(mol2_file), lig_link)
+    short_names["ligand_mol2"] = mol2_file.name
+
+    # Spheres
+    _create_symlink(spheres_file, mol_out / "spheres_ligand.sph")
+    short_names["spheres_file"] = "spheres_ligand.sph"
+
+    # Grid files (prefix.nrg, prefix.bmp)
+    grid_nrg = grid_prefix + ".nrg"
+    grid_bmp = grid_prefix + ".bmp"
+    _create_symlink(grid_nrg, mol_out / "ligand.nrg")
+    _create_symlink(grid_bmp, mol_out / "ligand.bmp")
+    short_names["grid_prefix"] = "ligand"
+
+    # DOCK6 parameter files (vdw_defn, flex_defn, flex_drive)
+    for key in ["vdw_defn_file", "flex_defn_file", "flex_drive_file"]:
+        src = dock6_params.get(key, "")
+        if "/" in src or "\\" in src:
+            link_name = Path(src).name
+            _create_symlink(src, mol_out / link_name)
+            short_names[key] = link_name
+        else:
+            short_names[key] = src
+
+    return short_names
+
+
+# =============================================================================
 # DOCK6 EXECUTION
 # =============================================================================
 
@@ -374,14 +452,16 @@ def run_dock6_single(
         dock_input: str,
         dock_output: str,
         timeout: int = 600,
+        cwd: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Execute dock6 for a single input file.
 
     Args:
-        dock_input: Path to dock6.in
-        dock_output: Path for dock6.out
+        dock_input: Path to dock6.in (filename if cwd is set)
+        dock_output: Path for dock6.out (filename if cwd is set)
         timeout: Maximum seconds to wait
+        cwd: Working directory for dock6 execution (for short paths)
 
     Returns:
         Dict with: success, returncode, runtime_sec, error
@@ -394,6 +474,7 @@ def run_dock6_single(
             capture_output=True,
             text=True,
             timeout=timeout,
+            cwd=cwd,
         )
         elapsed = time.time() - start
 
@@ -485,7 +566,7 @@ def run_dock6_batch(
 
     Args:
         ligand_mol2_dir: Directory with prepared mol2 files (from 00c)
-        spheres_file: Path to selected_spheres.sph
+        spheres_file: Path to spheres_ligand.sph
         grid_prefix: Grid prefix (without .nrg/.bmp)
         output_dir: Directory for docking output
         search_method: "flex" | "rigid"
@@ -509,7 +590,7 @@ def run_dock6_batch(
     # --- Validate prerequisites ---
     if not ligand_dir.exists():
         logger.error(f"Ligand directory not found: {ligand_dir}")
-        logger.error("Run module 00c first.")
+        logger.error("Run module 00d (antechamber) first.")
         return {"n_total": 0, "n_ok": 0, "n_failed": 0, "error": "Ligand dir not found"}
 
     grid_errors = validate_grids(spheres_file, grid_prefix)
@@ -555,22 +636,31 @@ def run_dock6_batch(
         mol_out = output_dir / name
         mol_out.mkdir(parents=True, exist_ok=True)
 
-        output_prefix = str(mol_out / name)
-        dock_input = str(mol_out / "dock6.in")
-        dock_output = str(mol_out / "dock6.out")
-        scored_mol2 = f"{output_prefix}_scored.mol2"
-
         logger.info(f"  [{idx + 1}/{len(mol2_files)}] {name}")
 
-        # --- Generate input file ---
-        generate_dock6_input(
-            ligand_mol2=str(mol2_file.resolve()),
+        # --- Create symlinks for short paths (80-char fix) ---
+        short = _setup_mol_symlinks(
+            mol_out=mol_out,
+            mol2_file=mol2_file,
             spheres_file=spheres_file,
             grid_prefix=grid_prefix,
-            output_prefix=output_prefix,
-            output_path=dock_input,
-            search_method=search_method,
             dock6_params=dock6_params,
+        )
+
+        # --- Generate input file with short filenames ---
+        dock_input = "dock6.in"
+        dock_output = "dock6.out"
+        output_prefix = name  # Just the name, no path (cwd=mol_out)
+        scored_mol2 = str(mol_out / f"{name}_scored.mol2")
+
+        generate_dock6_input(
+            ligand_mol2=short["ligand_mol2"],
+            spheres_file=short["spheres_file"],
+            grid_prefix=short["grid_prefix"],
+            output_prefix=output_prefix,
+            output_path=str(mol_out / dock_input),
+            search_method=search_method,
+            dock6_params=short,  # short filenames for param files
             max_orientations=max_orientations,
             num_scored_conformers=num_scored_conformers,
             minimize=minimize,
@@ -582,7 +672,7 @@ def run_dock6_batch(
             results.append({
                 "Name": name,
                 "status": "DRY_RUN",
-                "dock_input": dock_input,
+                "dock_input": str(mol_out / dock_input),
                 "scored_mol2": None,
                 "runtime_sec": 0,
                 "error": None,
@@ -590,8 +680,12 @@ def run_dock6_batch(
             logger.info(f"    -> DRY_RUN (input generated)")
             continue
 
-        # --- Execute DOCK6 ---
-        run_result = run_dock6_single(dock_input, dock_output, timeout=timeout_per_molecule)
+        # --- Execute DOCK6 with cwd=mol_out (short paths) ---
+        run_result = run_dock6_single(
+            dock_input, dock_output,
+            timeout=timeout_per_molecule,
+            cwd=str(mol_out),
+        )
         has_output = Path(scored_mol2).exists() and Path(scored_mol2).stat().st_size > 0
 
         status = "OK" if run_result["success"] and has_output else "FAILED"
@@ -604,8 +698,8 @@ def run_dock6_batch(
         results.append({
             "Name": name,
             "status": status,
-            "dock_input": dock_input,
-            "dock_output": dock_output,
+            "dock_input": str(mol_out / dock_input),
+            "dock_output": str(mol_out / dock_output),
             "scored_mol2": scored_mol2 if has_output else None,
             "runtime_sec": run_result["runtime_sec"],
             "error": error,

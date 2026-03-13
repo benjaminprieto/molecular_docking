@@ -6,9 +6,9 @@ Ejecuta DOCK6 para cada ligando preparado contra los grids.
 
 Reads campaign_config.yaml:
     - grids.grid_dir             -> directorio con grids
-    - grids.spheres_file         -> selected_spheres.sph
-    - grids.energy_grid          -> grid.nrg
-    - grids.bump_grid            -> grid.bmp
+    - grids.spheres_file         -> spheres_ligand.sph
+    - grids.energy_grid          -> ligand.nrg
+    - grids.bump_grid            -> ligand.bmp
 
 Reads module YAML (03_configs/01b_dock6_run.yaml):
     - search_method              -> flex | rigid
@@ -18,35 +18,33 @@ Reads module YAML (03_configs/01b_dock6_run.yaml):
     - simplex_max_iterations     -> iteraciones de minimizacion
     - timeout_per_molecule       -> timeout en segundos
 
-Input: 05_results/{campaign_id}/00c_ligand_preparation/mol2/*.mol2
-Output: 05_results/{campaign_id}/01b_dock6_run/
-    - {name}/dock6.in
-    - {name}/dock6.out
-    - {name}/{name}_scored.mol2
-    - docking_status.csv
-    - docking_summary.txt
-    - 01b_dock6_run.log
+Grid routing (v2.0):
+    1. Busca grids en 05_results/{campaign_id}/01a_grid_generation/
+    2. Si no existen, busca en campaign_config.grids.grid_dir
 
-Usage:
-    python 02_scripts/01b_dock6_run.py \\
-        --config 03_configs/01b_dock6_run.yaml \\
-        --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml
+Ligand routing (v2.0):
+    1. Busca mol2 en 05_results/{campaign_id}/00d_antechamber/mol2/
+    2. Si no existe, busca en 00c_ligand_preparation/mol2/
+
+Output: 05_results/{campaign_id}/01b_dock6_run/
+
+Usage (PyCharm Pro terminal — single line):
+    python 02_scripts/01b_dock6_run.py --config 03_configs/01b_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
     # Dock single molecule:
-    python 02_scripts/01b_dock6_run.py \\
-        --config 03_configs/01b_dock6_run.yaml \\
-        --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml \\
-        --name MolPort-047-542-199
+    python 02_scripts/01b_dock6_run.py --config 03_configs/01b_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --name MolPort-047-542-199
 
-    # Dry run (generate inputs only, no execution):
-    python 02_scripts/01b_dock6_run.py \\
-        --config 03_configs/01b_dock6_run.yaml \\
-        --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml \\
-        --dry-run
+    # Dry run (generate inputs only):
+    python 02_scripts/01b_dock6_run.py --config 03_configs/01b_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --dry-run
+
+PyCharm Run Configuration:
+    Script:     02_scripts/01b_dock6_run.py
+    Parameters: --config 03_configs/01b_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+    Working dir: (project root)
 
 Project: molecular_docking
 Module: 01b
-Version: 1.0
+Version: 2.0 — routing fix + symlinks (2026-03-13)
 """
 
 import argparse
@@ -118,20 +116,37 @@ def main():
     campaign_dir = Path(args.campaign).parent
     campaign_id = cc.get("campaign_id", campaign_dir.name)
 
-    # --- Resolve grids ---
+    # --- Resolve grids: check 01a output first, then campaign dir ---
     gc = cc.get("grids", {})
-    grid_dir = gc.get("grid_dir", "grids/")
-    grid_path = Path(grid_dir) if Path(grid_dir).is_absolute() else campaign_dir / grid_dir
+    grid_dir_01a = Path("05_results") / campaign_id / "01a_grid_generation"
 
-    spheres_file = str(grid_path / gc.get("spheres_file", "selected_spheres.sph"))
+    if (grid_dir_01a / gc.get("spheres_file", "spheres_ligand.sph")).exists():
+        grid_path = grid_dir_01a
+        logger.info(f"Using grids from 01a: {grid_path}")
+    else:
+        grid_dir = gc.get("grid_dir", "grids/")
+        grid_path = Path(grid_dir) if Path(grid_dir).is_absolute() else campaign_dir / grid_dir
+        if (grid_path / gc.get("spheres_file", "spheres_ligand.sph")).exists():
+            logger.info(f"Using grids from campaign: {grid_path}")
+        else:
+            logger.warning(f"Grids not found in 01a ({grid_dir_01a}) or campaign ({grid_path})")
+
+    spheres_file = str(grid_path / gc.get("spheres_file", "spheres_ligand.sph"))
     grid_prefix = resolve_grid_prefix(
-        str(grid_path), gc.get("energy_grid", "grid.nrg"),
+        str(grid_path), gc.get("energy_grid", "ligand.nrg"),
     )
 
-    # --- Ligand directory ---
-    ligand_dir = str(
-        Path("05_results") / campaign_id / "00c_ligand_preparation" / "mol2"
-    )
+    # --- Ligand directory: check 00d first, then 00c fallback ---
+    ligand_dir_00d = Path("05_results") / campaign_id / "00d_antechamber" / "mol2"
+    ligand_dir_00c = Path("05_results") / campaign_id / "00c_ligand_preparation" / "mol2"
+
+    if ligand_dir_00d.exists():
+        ligand_dir = str(ligand_dir_00d)
+    elif ligand_dir_00c.exists():
+        ligand_dir = str(ligand_dir_00c)
+    else:
+        ligand_dir = str(ligand_dir_00d)  # Will fail with clear error below
+
     output_dir = args.output or str(
         Path("05_results") / campaign_id / "01b_dock6_run"
     )
@@ -176,7 +191,9 @@ def main():
 
     if not Path(ligand_dir).exists():
         logger.error(f"Ligand directory not found: {ligand_dir}")
-        logger.error("Run module 00c first.")
+        logger.error(f"  Tried: {ligand_dir_00d}")
+        logger.error(f"  Tried: {ligand_dir_00c}")
+        logger.error("Run module 00d (antechamber) first.")
         return 1
 
     # =========================================================================

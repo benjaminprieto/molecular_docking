@@ -7,11 +7,11 @@ OPCIONAL: Si grids pre-existentes son validos en campaign_config.grids.grid_dir,
 este modulo se SALTA automaticamente.
 
 DOCK6 grid generation pipeline:
-    1. DMS surface   (dms)             -> receptor.dms
-    2. Spheres       (sphgen)          -> receptor.sph
-    3. Selection     (sphere_selector) -> selected_spheres.sph
-    4. Box           (showbox)         -> grid.box
-    5. Grid          (grid)            -> grid.nrg, grid.bmp
+    1. DMS surface   (dms)             -> receptor.ms
+    2. Spheres       (sphgen)          -> all_spheres.sph
+    3. Selection     (sphere_selector) -> spheres_ligand.sph
+    4. Box           (showbox)         -> spheres_ligand_box.pdb
+    5. Grid          (grid)            -> ligand.nrg, ligand.bmp
 
 Binding site definition (step 3) supports 4 methods:
     A. reference_ligand  -> sphere_selector uses ligand mol2/pdb
@@ -27,18 +27,22 @@ Input:
   - rec_charged.mol2 (receptor with charges, for grid)
   - Binding site reference (ligand, residues, or coordinates)
 
-Output:
-  - receptor.dms
-  - receptor.sph
-  - selected_spheres.sph
-  - grid.box
-  - grid.nrg, grid.bmp
+Output (all visualizable in ChimeraX):
+  - receptor.ms               DMS surface
+  - all_spheres.sph           All spheres (sphgen)
+  - INSPH, OUTSPH             sphgen input/output logs
+  - spheres_ligand.sph        Selected spheres near binding site
+  - box.in                    showbox input (reproducibility)
+  - spheres_ligand_box.pdb    Grid box as PDB (open in ChimeraX)
+  - grid.in                   grid input
+  - grid.out                  grid output (diagnostics)
+  - ligand.nrg, ligand.bmp    Energy and bump grids
   - grid_generation_report.json
 
 Location: 01_src/molecular_docking/m01_docking/grid_generation.py
 Project: molecular_docking
 Module: 01a (core)
-Version: 1.0
+Version: 2.2 — tutorial-compatible output names (2026-03-13)
 """
 
 import json
@@ -58,9 +62,9 @@ logger = logging.getLogger(__name__)
 
 def validate_existing_grids(
         grid_dir: Union[str, Path],
-        spheres_file: str = "selected_spheres.sph",
-        energy_grid: str = "grid.nrg",
-        bump_grid: str = "grid.bmp",
+        spheres_file: str = "spheres_ligand.sph",
+        energy_grid: str = "ligand.nrg",
+        bump_grid: str = "ligand.bmp",
 ) -> bool:
     """
     Check if pre-existing grids are valid and complete.
@@ -206,9 +210,9 @@ def generate_dms_surface(
         probe_radius: Probe radius in Angstroms
 
     Returns:
-        Path to receptor.dms, or None if failed
+        Path to receptor.ms, or None if failed
     """
-    output_path = Path(output_dir) / "receptor.dms"
+    output_path = Path(output_dir) / "receptor.ms"
 
     cmd = [
         "dms", receptor_noH_pdb,
@@ -261,10 +265,10 @@ def generate_spheres(
     exist. They must be deleted before each run.
 
     Returns:
-        Path to receptor.sph, or None if failed
+        Path to all_spheres.sph, or None if failed
     """
-    output_path = Path(output_dir) / "receptor.sph"
-    sph_filename = "receptor.sph"
+    output_path = Path(output_dir) / "all_spheres.sph"
+    sph_filename = "all_spheres.sph"
     dms_filename = Path(dms_path).name
 
     # --- Clean up files that sphgen refuses to overwrite ---
@@ -353,7 +357,7 @@ def select_spheres_by_ligand(
     """
     Method A: Select spheres near a reference ligand.
 
-    Uses sphere_selector: sphere_selector receptor.sph ligand.mol2 radius
+    Uses sphere_selector: sphere_selector all_spheres.sph ligand.mol2 radius
     """
     logger.info(f"  Step 3a: Sphere selection by reference ligand (radius={radius} A)")
 
@@ -370,7 +374,8 @@ def select_spheres_by_ligand(
             cwd=target_dir,
         )
 
-        # sphere_selector writes selected_spheres.sph to cwd
+        # sphere_selector always writes selected_spheres.sph to cwd
+        # We rename it to spheres_ligand.sph (our target name)
         cwd_output = Path(target_dir) / "selected_spheres.sph"
         target = Path(output_path)
 
@@ -443,7 +448,7 @@ def generate_box(
     showbox reads from an input file interactively. We create the input
     and pipe it.
     """
-    box_path = Path(output_dir) / "grid.box"
+    box_path = Path(output_dir) / "spheres_ligand_box.pdb"
 
     # showbox input: use filenames only (runs with cwd=output_dir)
     spheres_filename = Path(selected_spheres).name
@@ -456,6 +461,10 @@ def generate_box(
     # 4. cluster number (1 = largest)
     # 5. output box file
     showbox_input = f"Y\n{margin}\n{spheres_filename}\n1\n{box_filename}\n"
+
+    # Save box.in for reproducibility
+    box_in_path = Path(output_dir) / "box.in"
+    box_in_path.write_text(showbox_input)
 
     logger.info(f"  Step 4: Box generation (margin={margin} A)")
     try:
@@ -563,14 +572,14 @@ def generate_grid(
     # We symlink all input files into the output directory and use filenames only.
     out = Path(output_dir)
 
-    receptor_link = out / "rec_charged.mol2"
-    box_file = out / "grid.box"  # already here from step 4
+    receptor_link = out / "receptor.mol2"
+    box_file = out / "spheres_ligand_box.pdb"  # already here from step 4
     vdw_link = out / "vdw_AMBER_parm99.defn"
 
     # Symlink receptor mol2
     if not receptor_link.exists():
         receptor_link.symlink_to(Path(receptor_charged_mol2).resolve())
-        logger.debug(f"    Symlinked: rec_charged.mol2 -> {receptor_charged_mol2}")
+        logger.debug(f"    Symlinked: receptor.mol2 -> {receptor_charged_mol2}")
 
     # Symlink vdw definition file
     if not vdw_link.exists():
@@ -593,10 +602,10 @@ dielectric_factor              {dielectric_factor}
 bump_filter                    yes
 bump_overlap                   {bump_overlap}
 allow_non_integral_charges     yes
-receptor_file                  rec_charged.mol2
-box_file                       grid.box
+receptor_file                  receptor.mol2
+box_file                       spheres_ligand_box.pdb
 vdw_definition_file            vdw_AMBER_parm99.defn
-score_grid_prefix              grid
+score_grid_prefix              ligand
 """
 
     grid_in_path = out / "grid.in"
@@ -613,8 +622,8 @@ score_grid_prefix              grid
             cwd=str(out),
         )
 
-        nrg_path = out / "grid.nrg"
-        bmp_path = out / "grid.bmp"
+        nrg_path = out / "ligand.nrg"
+        bmp_path = out / "ligand.bmp"
 
         if nrg_path.exists() and bmp_path.exists():
             logger.info(f"    -> {nrg_path.name} ({nrg_path.stat().st_size} bytes)")
@@ -735,7 +744,7 @@ def run_grid_generation(
     report["steps"]["spheres"] = sph_path
 
     # --- Step 3: Sphere selection ---
-    selected_path = str(output_dir / "selected_spheres.sph")
+    selected_path = str(output_dir / "spheres_ligand.sph")
 
     if binding_site_method == "reference_ligand":
         if not reference_mol2 or not Path(reference_mol2).exists():
@@ -806,9 +815,10 @@ def run_grid_generation(
     # --- Summary ---
     logger.info("")
     logger.info(f"  Grid generation complete!")
-    logger.info(f"  selected_spheres.sph: {selected_path}")
-    logger.info(f"  grid.nrg:             {grid_result['energy_grid']}")
-    logger.info(f"  grid.bmp:             {grid_result['bump_grid']}")
+    logger.info(f"  spheres_ligand.sph:     {selected_path}")
+    logger.info(f"  spheres_ligand_box.pdb: {box_path}")
+    logger.info(f"  ligand.nrg:             {grid_result['energy_grid']}")
+    logger.info(f"  ligand.bmp:             {grid_result['bump_grid']}")
 
     return {
         "success": True,

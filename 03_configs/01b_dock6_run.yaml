@@ -1,59 +1,61 @@
 # =============================================================================
 # 01b DOCK6 Run - Configuration
 # =============================================================================
-# Ejecuta DOCK6 flexible/rigid docking para cada ligando preparado.
+# Runs DOCK6 flexible/rigid docking for each prepared ligand.
 #
 # DOCK6 scoring: grid-based energy (van der Waals + electrostatic)
-# Anchor-and-grow flexible docking con simplex minimization.
+# Anchor-and-grow flexible docking with simplex minimization.
 #
-# INPUT:
-#   - 05_results/{campaign_id}/00c_ligand_preparation/mol2/*.mol2
-#   - Grids: campaign_config.grids.grid_dir (pre-existentes o de 01a)
+# ROUTING (v2.0):
+#   Ligands: 00d_antechamber/mol2/ first, then 00c_ligand_preparation/mol2/
+#   Grids:   01a_grid_generation/ first, then campaign grids.grid_dir
+#
+# PATH FIX (v2.0):
+#   DOCK6 truncates paths at ~80 chars (Fortran legacy).
+#   This module creates symlinks in each mol_out/ and uses short filenames.
+#   dock6 runs with cwd=mol_out/ so all paths are relative.
 #
 # OUTPUT: 05_results/{campaign_id}/01b_dock6_run/
 #
-# PARAMETROS DE DOCK6:
-#   Estos parametros se pasan directamente al template de dock6.in.
-#   Para entender cada uno, ver el DOCK 6 Manual:
+# DOCK6 parameters reference:
 #   https://dock.compbio.ucsf.edu/DOCK_6/dock6_manual.htm
 #
 # Project: molecular_docking
 # Module: 01b
-# Version: 1.0
+# Version: 2.0 — routing fix + symlinks (2026-03-13)
 # =============================================================================
 
 parameters:
-  # --- Metodo de busqueda conformacional ---
-  # "flex"   -> anchor-and-grow (estandar, recomendado para drug-like)
-  # "rigid"  -> rigid body (solo orientacion sin flexibilidad)
+  # --- Search method ---
+  # "flex"   -> anchor-and-grow (standard for drug-like molecules)
+  # "rigid"  -> rigid body (orientation only, no flexibility)
   search_method: "flex"
 
   # --- Flex-specific: anchor-and-grow ---
-  min_anchor_size: 5                      # Min heavy atoms para anchor
-  pruning_max_orients: 1000               # Orientaciones a evaluar por capa
-  pruning_clustering_cutoff: 100          # RMSD clustering cutoff
-  pruning_conformer_score_cutoff: 100.0   # Score cutoff para poda
+  min_anchor_size: 5
+  pruning_max_orients: 1000
+  pruning_clustering_cutoff: 100
+  pruning_conformer_score_cutoff: 100.0
 
-  # --- Orientacion ---
-  max_orientations: 1000                  # Orientaciones maximas a probar
+  # --- Orientation ---
+  max_orientations: 1000
 
-  # --- Minimizacion (simplex) ---
+  # --- Minimization (simplex) ---
   minimize: true
   simplex_max_iterations: 500
   simplex_max_cycles: 1
   simplex_score_converge: 0.1
   simplex_cycle_converge: 1.0
-  simplex_trans_step: 1.0                 # Translation step (Angstroms)
-  simplex_rot_step: 0.1                   # Rotation step (radians)
-  simplex_tors_step: 10.0                 # Torsion step (degrees)
+  simplex_trans_step: 1.0
+  simplex_rot_step: 0.1
+  simplex_tors_step: 10.0
 
   # --- Output ---
-  num_scored_conformers: 20               # Poses a escribir por molecula
-  write_orientations: false               # Escribir orientaciones pre-minim
+  num_scored_conformers: 20
+  write_orientations: false
 
-  # --- Ejecucion ---
-  timeout_per_molecule: 600               # Segundos (10 min)
-                                          # Moleculas grandes pueden necesitar mas
+  # --- Execution ---
+  timeout_per_molecule: 600
 
   # Log level
   log_level: "INFO"
@@ -64,38 +66,29 @@ parameters:
 outputs:
   subdir: "01b_dock6_run"
 
-  # Archivos generados por molecula:
-  #   {name}/dock6.in                -> input file de DOCK6
-  #   {name}/dock6.out               -> log de DOCK6
-  #   {name}/{name}_scored.mol2      -> poses scored
+  # Per-molecule:
+  #   {name}/dock6.in              -> DOCK6 input file
+  #   {name}/dock6.out             -> DOCK6 log
+  #   {name}/{name}_scored.mol2    -> scored poses
   #
-  # Archivos globales:
-  #   docking_status.csv             -> status por molecula
-  #   docking_summary.txt            -> resumen legible
-  #   01b_dock6_run.log              -> log completo
+  # Global:
+  #   docking_status.csv           -> per-molecule status
+  #   docking_summary.txt          -> human-readable summary
+  #   01b_dock6_run.log
 
 # =============================================================================
-# USAGE
+# USAGE (PyCharm Pro terminal — single line)
 # =============================================================================
-# python 02_scripts/01b_dock6_run.py \
-#     --config 03_configs/01b_dock6_run.yaml \
-#     --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml
+# python 02_scripts/01b_dock6_run.py --config 03_configs/01b_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 #
-# # Solo una molecula:
-# python 02_scripts/01b_dock6_run.py \
-#     --config 03_configs/01b_dock6_run.yaml \
-#     --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml \
-#     --name MolPort-047-542-199
+# # Single molecule:
+# python 02_scripts/01b_dock6_run.py --config 03_configs/01b_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --name MolPort-047-542-199
 #
-# # Dry run (generar inputs sin ejecutar):
-# python 02_scripts/01b_dock6_run.py \
-#     --config 03_configs/01b_dock6_run.yaml \
-#     --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml \
-#     --dry-run
+# # Dry run:
+# python 02_scripts/01b_dock6_run.py --config 03_configs/01b_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --dry-run
 #
-# # Override metodo y orientaciones:
-# python 02_scripts/01b_dock6_run.py \
-#     --config 03_configs/01b_dock6_run.yaml \
-#     --campaign 04_data/campaigns/phermit_groove/campaign_config.yaml \
-#     --method rigid --orientations 500
+# PyCharm Run Configuration:
+#   Script:     02_scripts/01b_dock6_run.py
+#   Parameters: --config 03_configs/01b_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#   Working dir: (project root)
 # =============================================================================
