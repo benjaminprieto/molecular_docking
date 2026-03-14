@@ -606,6 +606,16 @@ def run_dock6_batch(
 
     # --- Find ligand mol2 files ---
     mol2_files = sorted(ligand_dir.glob("*.mol2"))
+
+    # Skip empty or broken mol2 files (failed antechamber runs)
+    valid_mol2 = []
+    for f in mol2_files:
+        if f.stat().st_size == 0:
+            logger.warning(f"  Skipping empty mol2: {f.name}")
+        else:
+            valid_mol2.append(f)
+    mol2_files = valid_mol2
+
     if molecule_filter:
         filter_set = set(molecule_filter)
         mol2_files = [f for f in mol2_files if f.stem in filter_set]

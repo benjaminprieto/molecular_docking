@@ -359,7 +359,7 @@ def run_antechamber_preparation(
                 "net_charge": net_charge,
                 "mol2_valid": validation["valid"],
                 "mol2_n_atoms": validation["n_atoms"],
-                "mol2_path": str(mol2_path),
+                "mol2_path": str(mol2_path) if validation["valid"] else None,
                 "sdf_path": str(sdf_path),
                 "error": None if validation["valid"] else "mol2 validation failed",
             }
@@ -367,8 +367,17 @@ def run_antechamber_preparation(
                 logger.info(f"    -> OK ({method}, "
                             f"{validation['n_atoms']} atoms, Q={net_charge})")
             else:
+                # Remove invalid mol2 so 01b doesn't pick it up
+                if mol2_path.exists():
+                    mol2_path.unlink()
+                    logger.debug(f"    Removed invalid mol2: {mol2_path.name}")
                 logger.warning(f"    -> INVALID mol2 ({method})")
         else:
+            # Remove empty/broken mol2 left behind by failed attempts
+            if mol2_path.exists():
+                mol2_path.unlink()
+                logger.debug(f"    Removed failed mol2: {mol2_path.name}")
+
             res = {
                 "Name": name,
                 "status": "FAILED",

@@ -2,7 +2,7 @@
 """
 01a Grid Generation - CLI
 ===========================
-Genera grids DOCK6. OPCIONAL: skips si grids pre-existentes son validos.
+Generate DOCK6 grids. Skips if valid grids already exist.
 
 Binding site methods (from campaign_config.yaml):
   A. reference_ligand  -> sphere_selector uses ligand mol2/pdb
@@ -10,18 +10,20 @@ Binding site methods (from campaign_config.yaml):
   C. coordinates       -> explicit (x, y, z) center
   D. (skip)            -> grids already exist in grid_dir
 
-Usage:
+Usage (PyCharm Pro terminal — single line):
     python 02_scripts/01a_grid_generation.py --config 03_configs/01a_grid_generation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
-    # Force regeneration even if grids exist:
-    python 02_scripts/01a_grid_generation.py \\
-        --config 03_configs/01a_grid_generation.yaml \\
-        --campaign 04_data/campaigns/my_campaign/campaign_config.yaml \\
-        --force
+    # Force regeneration:
+    python 02_scripts/01a_grid_generation.py --config 03_configs/01a_grid_generation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --force
+
+PyCharm Run Configuration:
+    Script:     02_scripts/01a_grid_generation.py
+    Parameters: --config 03_configs/01a_grid_generation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+    Working dir: (project root)
 
 Project: molecular_docking
 Module: 01a
-Version: 1.0
+Version: 2.2 — tutorial-compatible output names (2026-03-13)
 """
 
 import argparse
@@ -113,25 +115,18 @@ def main():
 
     # --- Resolve receptor paths ---
     rec_config = cc.get("receptor", {})
-
-    # rec_noH.pdb: prefer trimmed from 00e, fallback to 00b, then campaign
     receptor_prep_dir = Path("05_results") / campaign_id / "00b_receptor_preparation"
-    binding_site_dir = Path("05_results") / campaign_id / "00e_binding_site"
-    rec_noH_site = binding_site_dir / "rec_noH_site.pdb"
 
-    if rec_noH_site.exists():
-        rec_noH = rec_noH_site
-        logger.info(f"Using trimmed PDB from 00e: {rec_noH}")
-    elif (receptor_prep_dir / "rec_noH.pdb").exists():
+    # rec_noH.pdb: always use 00b output (full receptor)
+    if (receptor_prep_dir / "rec_noH.pdb").exists():
         rec_noH = receptor_prep_dir / "rec_noH.pdb"
     else:
         rec_noH = campaign_dir / rec_config.get("pdb", "receptor/receptor.pdb")
         logger.info(f"Using campaign receptor as noH PDB: {rec_noH}")
 
+    # rec_charged.mol2
     rec_mol2 = receptor_prep_dir / "rec_charged.mol2"
-
     if not rec_mol2.exists():
-        # Check prepared_mol2
         prepared = rec_config.get("prepared_mol2")
         if prepared:
             rec_mol2 = Path(prepared) if Path(prepared).is_absolute() else campaign_dir / prepared
@@ -208,7 +203,7 @@ def main():
         chain=chain,
         radius=site_radius,
         probe_radius=params.get("probe_radius", 1.4),
-        box_margin=params.get("box_margin", 10.0),
+        box_margin=params.get("box_margin", 5.0),
         grid_spacing=params.get("grid_spacing", 0.3),
         energy_cutoff_distance=params.get("energy_cutoff_distance", 9999.0),
         attractive_exponent=params.get("attractive_exponent", 6),

@@ -2,30 +2,31 @@
 """
 00d Antechamber Preparation - CLI
 ====================================
-Convierte SDF protonados de 00c en mol2 DOCK6-ready via antechamber.
+Converts protonated SDF files from 00c into DOCK6-ready mol2 files via antechamber.
 
-Input: SDF individuales de 00c (structures/pH{value}/*.sdf)
+Input: Individual SDF files from 00c (structures/pH{value}/*.sdf)
 Output: mol2/*.mol2 (AM1-BCC charges, GAFF2 atom types)
 
 Reads campaign_config.yaml:
-    - docking_ph          -> selecciona carpeta pH de 00c
+    - docking_ph          -> selects pH folder from 00c
 
 Reads module YAML (03_configs/00d_antechamber_preparation.yaml):
     - charge_method, atom_type, timeout, obabel_fallback
 
-Usage:
-    python 02_scripts/00d_antechamber_preparation.py \\
-        --config 03_configs/00d_antechamber_preparation.yaml \\
-        --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+Usage (PyCharm Pro terminal — single line):
+    python 02_scripts/00d_antechamber_preparation.py --config 03_configs/00d_antechamber_preparation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
     # Override SDF directory:
-    python 02_scripts/00d_antechamber_preparation.py \\
-        --config 03_configs/00d_antechamber_preparation.yaml \\
-        --sdf-dir 05_results/example_campaign/00c_ionization_profiling/20260310_120000/structures/pH72
+    python 02_scripts/00d_antechamber_preparation.py --config 03_configs/00d_antechamber_preparation.yaml --sdf-dir 05_results/example_campaign/00c_ionization_profiling/20260310_120000/structures/pH72
+
+PyCharm Run Configuration:
+    Script:     02_scripts/00d_antechamber_preparation.py
+    Parameters: --config 03_configs/00d_antechamber_preparation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+    Working dir: (project root)
 
 Project: molecular_docking
 Module: 00d
-Version: 1.0
+Version: 1.1
 """
 
 import argparse
@@ -67,7 +68,6 @@ def _find_latest_run(ionization_dir: Path) -> Path:
     ]
     if not run_dirs:
         return ionization_dir
-    # Sort by name (timestamp format: YYYYMMDD_HHMMSS)
     run_dirs.sort(key=lambda d: d.name, reverse=True)
     return run_dirs[0]
 
@@ -80,7 +80,6 @@ def _find_ph_folder(structures_dir: Path, docking_ph: float) -> Path:
     if ph_dir.exists():
         return ph_dir
 
-    # Try to find closest match
     available = [
         d.name for d in structures_dir.iterdir()
         if d.is_dir() and d.name.startswith("pH")
@@ -89,12 +88,11 @@ def _find_ph_folder(structures_dir: Path, docking_ph: float) -> Path:
     if available:
         logger.warning(f"pH folder '{ph_label}' not found. "
                        f"Available: {sorted(available)}")
-        # If only one folder, use it
         if len(available) == 1:
             logger.info(f"  Using only available folder: {available[0]}")
             return structures_dir / available[0]
 
-    return ph_dir  # Will fail with clear error
+    return ph_dir
 
 
 def main():
@@ -106,13 +104,11 @@ def main():
     parser.add_argument("--campaign", type=str, default=None,
                         help="Campaign config YAML")
 
-    # Direct mode
     parser.add_argument("--sdf-dir", type=str, default=None,
                         help="Path to SDF directory (overrides auto-detection)")
     parser.add_argument("--output", "-o", type=str, default=None,
                         help="Output directory")
 
-    # Overrides
     parser.add_argument("--charge-method", type=str, default=None,
                         choices=["bcc", "gas"])
     parser.add_argument("--atom-type", type=str, default=None,
@@ -126,10 +122,6 @@ def main():
 
     args = parser.parse_args()
 
-    # =========================================================================
-    # RESOLVE PARAMETERS
-    # =========================================================================
-
     sdf_dir = None
     output_dir = None
     campaign_id = "direct"
@@ -140,14 +132,12 @@ def main():
     timeout_per_molecule = 300
     log_level = "INFO"
 
-    # --- Campaign config ---
     if args.campaign:
         cc = load_yaml(args.campaign)
         campaign_dir = Path(args.campaign).parent
         campaign_id = cc.get("campaign_id", campaign_dir.name)
         docking_ph = cc.get("docking_ph", docking_ph)
 
-        # Auto-detect SDF directory from 00c output
         ionization_dir = Path("05_results") / campaign_id / "00c_ionization_profiling"
         if ionization_dir.exists():
             latest_run = _find_latest_run(ionization_dir)
@@ -157,7 +147,6 @@ def main():
 
         output_dir = str(Path("05_results") / campaign_id / "00d_antechamber")
 
-    # --- Module config ---
     if args.config:
         mc = load_yaml(args.config)
         params = mc.get("parameters", {})
@@ -167,7 +156,6 @@ def main():
         timeout_per_molecule = params.get("timeout_per_molecule", timeout_per_molecule)
         log_level = params.get("log_level", log_level)
 
-    # --- CLI overrides ---
     if args.sdf_dir:
         sdf_dir = args.sdf_dir
     if args.output:
@@ -199,19 +187,11 @@ def main():
         logger.error(f"No SDF files found in: {sdf_dir}")
         return 1
 
-    # =========================================================================
-    # SETUP LOGGING
-    # =========================================================================
-
     if log_level:
         logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
     log_path = Path(output_dir) / "00d_antechamber.log"
     setup_log_file(log_path, log_level)
-
-    # =========================================================================
-    # EXECUTE
-    # =========================================================================
 
     logger.info("=" * 60)
     logger.info("  MOLECULAR_DOCKING - Module 00d: Antechamber")
