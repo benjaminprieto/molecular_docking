@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-01a Grid Generation - CLI
-===========================
+01b Grid Generation - CLI (DOCK6-specific)
+=============================================
 Generate DOCK6 grids. Skips if valid grids already exist.
 
 Binding site methods (from campaign_config.yaml):
@@ -10,20 +10,18 @@ Binding site methods (from campaign_config.yaml):
   C. coordinates       -> explicit (x, y, z) center
   D. (skip)            -> grids already exist in grid_dir
 
-Usage (PyCharm Pro terminal — single line):
-    python 02_scripts/01a_grid_generation.py --config 03_configs/01a_grid_generation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+Hardcoded upstream paths:
+    - 05_results/{campaign_id}/00b_receptor_preparation/rec_charged.mol2
+    - 05_results/{campaign_id}/00b_receptor_preparation/rec_noH.pdb
+    - 05_results/{campaign_id}/00e_binding_site/rec_noH_site.pdb (preferred)
+    - Output: 05_results/{campaign_id}/01b_grid_generation/
 
-    # Force regeneration:
-    python 02_scripts/01a_grid_generation.py --config 03_configs/01a_grid_generation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --force
-
-PyCharm Run Configuration:
-    Script:     02_scripts/01a_grid_generation.py
-    Parameters: --config 03_configs/01a_grid_generation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
-    Working dir: (project root)
+Usage:
+    python 02_scripts/01b_grid_generation.py --config 03_configs/01b_grid_generation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
 Project: molecular_docking
-Module: 01a
-Version: 2.2 — tutorial-compatible output names (2026-03-13)
+Module: 01b (DOCK6 engine) — renumbered from 01a (2026-03-16)
+Version: 2.3
 """
 
 import argparse
@@ -54,7 +52,6 @@ def load_yaml(path):
 
 
 def setup_log_file(log_path: Path, log_level: str = "INFO"):
-    """Add file handler to root logger."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     fh = logging.FileHandler(str(log_path), encoding="utf-8")
     fh.setLevel(getattr(logging, log_level.upper(), logging.INFO))
@@ -63,18 +60,17 @@ def setup_log_file(log_path: Path, log_level: str = "INFO"):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate DOCK6 grids")
-    parser.add_argument("--config", type=str, default=None,
-                        help="Module config YAML")
-    parser.add_argument("--campaign", type=str, default=None,
-                        help="Campaign config YAML")
+    parser = argparse.ArgumentParser(
+        description="01b Grid Generation — Generate DOCK6 grids (DOCK6 engine)"
+    )
+    parser.add_argument("--config", type=str, default=None, help="Module config YAML")
+    parser.add_argument("--campaign", type=str, default=None, help="Campaign config YAML")
     parser.add_argument("--output", type=str, default=None)
-    parser.add_argument("--force", action="store_true",
-                        help="Regenerate even if grids exist")
+    parser.add_argument("--force", action="store_true", help="Regenerate even if grids exist")
     args = parser.parse_args()
 
     logger.info("=" * 60)
-    logger.info("  MOLECULAR_DOCKING - Module 01a: Grid Generation")
+    logger.info("  MOLECULAR_DOCKING - Module 01b: Grid Generation (DOCK6)")
     logger.info("=" * 60)
 
     if not args.campaign:
@@ -116,10 +112,9 @@ def main():
     # --- Resolve receptor paths ---
     rec_config = cc.get("receptor", {})
     receptor_prep_dir = Path("05_results") / campaign_id / "00b_receptor_preparation"
-    binding_site_dir = Path("05_results") / campaign_id / "00e_binding_site"
+    binding_site_dir = Path("05_results") / campaign_id / "00d_binding_site"
 
-    # rec_noH.pdb for DMS/sphgen: prefer trimmed from 00e (avoids sphgen overflow),
-    # fallback to full receptor from 00b
+    # rec_noH.pdb for DMS/sphgen: prefer trimmed from 00e
     rec_noH_site = binding_site_dir / "rec_noH_site.pdb"
     if rec_noH_site.exists():
         rec_noH = rec_noH_site
@@ -184,17 +179,18 @@ def main():
 
     logger.info(f"Binding site:    {method}")
 
-    # --- Load module config for algorithmic params ---
+    # --- Load module config ---
     params = {}
     if args.config:
         mc = load_yaml(args.config)
         params = mc.get("parameters", {})
 
-    output_dir = args.output or str(Path("05_results") / campaign_id / "01a_grid_generation")
+    # --- CHANGED: output subdir 01a → 01b ---
+    output_dir = args.output or str(Path("05_results") / campaign_id / "01b_grid_generation")
 
     # --- Setup log file ---
     log_level = params.get("log_level", "INFO")
-    log_path = Path(output_dir) / "01a_grid_generation.log"
+    log_path = Path(output_dir) / "01b_grid_generation.log"
     setup_log_file(log_path, log_level)
 
     # --- Run grid generation ---
@@ -223,6 +219,9 @@ def main():
 
     if result.get("success"):
         logger.info("Grid generation successful!")
+        logger.info(f"Next: python 02_scripts/01c_dock6_run.py "
+                     f"--config 03_configs/01c_dock6_run.yaml "
+                     f"--campaign {args.campaign}")
         return 0
     else:
         logger.error(f"Grid generation failed: {result.get('error')}")

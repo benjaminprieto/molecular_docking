@@ -5,22 +5,37 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="88ab89a4-df8a-4554-a3f5-4d87aade3b19" name="Changes" comment="Resolve conflicts: keep local PC version">
+      <change afterPath="$PROJECT_DIR$/01_src/molecular_docking/m02_vina/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/01_src/molecular_docking/m02_vina/vina_preparation.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/01_src/molecular_docking/m02_vina/vina_runner.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/01_src/molecular_docking/m02_vina/vina_score_collector.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/02_scripts/02a_vina_preparation.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/02_scripts/02b_vina_runner.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/02_scripts/02c_vina_score_collector.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/03_configs/00d_binding_site_definition.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/03_configs/01a_antechamber_preparation.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/03_configs/01b_grid_generation.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/03_configs/01c_dock6_run.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/03_configs/01d_score_collection.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/03_configs/02a_vina_preparation.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/03_configs/02b_vina_runner.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/03_configs/02c_vina_score_collector.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m02_collection/score_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m02_collection/score_collector.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/00b_receptor_preparation.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/00b_receptor_preparation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/01a_grid_generation.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/01a_grid_generation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/02a_score_collection.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/02a_score_collection.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/03_configs/00d_antechamber_preparation.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/03_configs/00d_antechamber_preparation.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/03_configs/02a_score_collection.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/03_configs/02a_score_collection.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/campaign_config.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/grids/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/molecules/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/molecules/UDX_mol2.mol2" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/molecules/UDX_sdf.sdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/molecules/query_results.sdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/receptor/.gitkeep" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/receptor/XT1_6EJ7.pdb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m00_preparation/antechamber_preparation.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/antechamber_preparation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m02_collection/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m02_collection/score_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/score_collector.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/02_scripts/00d_antechamber_preparation.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/01a_antechamber_preparation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/02_scripts/00e_binding_site_definition.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/00d_binding_site_definition.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/02_scripts/01a_grid_generation.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/01b_grid_generation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/02_scripts/01b_dock6_run.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/01c_dock6_run.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/02_scripts/02a_score_collection.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/01d_score_collection.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/03_configs/00d_antechamber_preparation.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/03_configs/00e_binding_site_definition.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/03_configs/01a_grid_generation.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/03_configs/01b_dock6_run.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/03_configs/02a_score_collection.yaml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/run_pipeline.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run_pipeline.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_pipeline.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -60,38 +75,39 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.python install_molecular_docking.py.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.highlight.mappings&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.highlight.symlinks&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.date&quot;: &quot;false&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.permissions&quot;: &quot;false&quot;,
-    &quot;WebServerToolWindowPanel.toolwindow.show.size&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/benja/PycharmProjects/molecular_docking/04_data/campaigns/example_campaign/molecules&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.python install_molecular_docking.py.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.mappings": "true",
+    "WebServerToolWindowPanel.toolwindow.highlight.symlinks": "true",
+    "WebServerToolWindowPanel.toolwindow.show.date": "false",
+    "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
+    "WebServerToolWindowPanel.toolwindow.show.size": "false",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "C:/Users/benja/PycharmProjects/molecular_docking/03_configs",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\03_configs" />
+      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\02_scripts" />
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking\04_data\campaigns\example_campaign\molecules" />
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking" />
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking\01_src\molecular_docking\m00_preparation" />
-      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\03_configs" />
-      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\02_scripts" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\01_src\molecular_docking\m01_docking" />
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking\04_data\campaigns\example_campaign\receptor" />
     </key>
   </component>
@@ -144,7 +160,7 @@
       <workItem from="1773002330676" duration="24994000" />
       <workItem from="1773342055522" duration="1723000" />
       <workItem from="1773495582836" duration="17383000" />
-      <workItem from="1773668888897" duration="3773000" />
+      <workItem from="1773668888897" duration="5839000" />
     </task>
     <task id="LOCAL-00001" summary="Resolve conflicts: keep local PC version">
       <option name="closed" value="true" />
@@ -178,7 +194,15 @@
       <option name="project" value="LOCAL" />
       <updated>1773498570418</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Resolve conflicts: keep local PC version">
+      <option name="closed" value="true" />
+      <created>1773700846725</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1773700846725</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

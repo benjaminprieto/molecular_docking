@@ -1,0 +1,93 @@
+# =============================================================================
+# 02c Vina Score Collector - Configuration (molecular_docking v1.0)
+# =============================================================================
+# Recolecta, enriquece y exporta scores de Vina a CSV + Excel.
+#
+# Merge con metadata de 00a, ranking por afinidad, y exportación
+# a formatos compatibles con dock2profile downstream.
+#
+# NO incluye comparación cruzada Vina vs DOCK6 — esa responsabilidad
+# pertenece a dock2profile.
+#
+# INPUT PATHS come from campaign_config.yaml + hardcoded upstream conventions:
+#   - Vina results: 05_results/{campaign_id}/02b_vina_run/vina_results.csv
+#   - Molecules:    05_results/{campaign_id}/00a_molecule_parser/unique_molecules.csv
+#   - Output:       05_results/{campaign_id}/02c_vina_scores/
+#
+# PRECONDITIONS:
+#   - Module 02b must have been run (vina_results.csv)
+#   - Module 00a should have been run (optional enrichment)
+#
+# Project: molecular_docking
+# Module: 02c
+# Version: 1.0
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# PARAMETERS
+# -----------------------------------------------------------------------------
+parameters:
+
+  # --- Ranking ---
+
+  # Número de top moléculas a destacar en el reporte
+  top_n: 10
+
+  # Columna de nombre en unique_molecules.csv
+  name_column: "Name"
+
+  # --- Export ---
+
+  # Generar archivo Excel (.xlsx)
+  # Requiere openpyxl: pip install openpyxl
+  export_excel: true
+
+  # --- Logging ---
+  log_level: "INFO"
+
+# -----------------------------------------------------------------------------
+# OUTPUT
+# -----------------------------------------------------------------------------
+outputs:
+  subdir: "02c_vina_scores"
+
+  # Generated files:
+  #   vina_scores.csv            Scores enriquecidos + ranking
+  #   vina_scores.xlsx           Excel formateado (con colores y ranking)
+  #   vina_scores.json           JSON para consumo programático
+  #   vina_score_summary.txt     Resumen legible con top-N
+  #   02c_vina_scores.log
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/02c_vina_score_collector.py --config 03_configs/02c_vina_score_collector.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#
+# # Direct mode:
+# python 02_scripts/02c_vina_score_collector.py --results vina_results.csv --molecules unique_molecules.csv --output results/02c/
+#
+# # Sin Excel:
+# python 02_scripts/02c_vina_score_collector.py --config 03_configs/02c_vina_score_collector.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --no-excel
+#
+# PyCharm Run Configuration:
+#   Script:     02_scripts/02c_vina_score_collector.py
+#   Parameters: --config 03_configs/02c_vina_score_collector.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#   Working dir: (project root)
+# =============================================================================
+
+# =============================================================================
+# OUTPUT COLUMNS (vina_scores.csv)
+# =============================================================================
+# De 02b (vina_results.csv):
+#   name, success, affinity, rmsd_lb, rmsd_ub, n_poses,
+#   output_file, ligand_file, error, runtime, engine
+#
+# De 00a (unique_molecules.csv, merge):
+#   SMILES*, MW, LogP, HBD, HBA, TPSA, QED, etc.
+#
+# Calculados por 02c:
+#   Vina_Rank          Ranking por afinidad (1 = mejor)
+#   Vina_Percentile    Percentil (0 = mejor, 100 = peor)
+#   Is_Top_N           True si está en el top N
+#   Is_Reference       True si es el ligando de referencia/control
+# =============================================================================

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-01b DOCK6 Run - CLI
-=====================
+01c DOCK6 Run - CLI (DOCK6-specific)
+=======================================
 Ejecuta DOCK6 para cada ligando preparado contra los grids.
 
 Reads campaign_config.yaml:
@@ -10,41 +10,25 @@ Reads campaign_config.yaml:
     - grids.energy_grid          -> ligand.nrg
     - grids.bump_grid            -> ligand.bmp
 
-Reads module YAML (03_configs/01b_dock6_run.yaml):
-    - search_method              -> flex | rigid
-    - max_orientations           -> orientaciones a probar
-    - num_scored_conformers      -> poses a escribir
-    - minimize                   -> simplex minimization
-    - simplex_max_iterations     -> iteraciones de minimizacion
-    - timeout_per_molecule       -> timeout en segundos
+Reads module YAML (03_configs/01c_dock6_run.yaml):
+    - search_method, max_orientations, num_scored_conformers, etc.
 
-Grid routing (v2.0):
-    1. Busca grids en 05_results/{campaign_id}/01a_grid_generation/
+Grid routing (v3.0):
+    1. Busca grids en 05_results/{campaign_id}/01b_grid_generation/
     2. Si no existen, busca en campaign_config.grids.grid_dir
 
-Ligand routing (v2.0):
-    1. Busca mol2 en 05_results/{campaign_id}/00d_antechamber/mol2/
+Ligand routing (v3.0):
+    1. Busca mol2 en 05_results/{campaign_id}/01a_antechamber/mol2/
     2. Si no existe, busca en 00c_ligand_preparation/mol2/
 
-Output: 05_results/{campaign_id}/01b_dock6_run/
+Output: 05_results/{campaign_id}/01c_dock6_run/
 
-Usage (PyCharm Pro terminal — single line):
-    python 02_scripts/01b_dock6_run.py --config 03_configs/01b_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
-
-    # Dock single molecule:
-    python 02_scripts/01b_dock6_run.py --config 03_configs/01b_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --name MolPort-047-542-199
-
-    # Dry run (generate inputs only):
-    python 02_scripts/01b_dock6_run.py --config 03_configs/01b_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --dry-run
-
-PyCharm Run Configuration:
-    Script:     02_scripts/01b_dock6_run.py
-    Parameters: --config 03_configs/01b_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
-    Working dir: (project root)
+Usage:
+    python 02_scripts/01c_dock6_run.py --config 03_configs/01c_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
 Project: molecular_docking
-Module: 01b
-Version: 2.0 — routing fix + symlinks (2026-03-13)
+Module: 01c (DOCK6 engine) — renumbered from 01b (2026-03-16)
+Version: 3.0
 """
 
 import argparse
@@ -71,7 +55,6 @@ def load_yaml(path):
 
 
 def setup_log_file(log_path: Path, log_level: str = "INFO"):
-    """Add file handler to root logger."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     fh = logging.FileHandler(str(log_path), encoding="utf-8")
     fh.setLevel(getattr(logging, log_level.upper(), logging.INFO))
@@ -81,28 +64,20 @@ def setup_log_file(log_path: Path, log_level: str = "INFO"):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run DOCK6 flexible/rigid docking for all prepared ligands",
+        description="01c DOCK6 Run — flexible/rigid docking per molecule (DOCK6 engine)",
     )
-    # Modes
     parser.add_argument("--config", "-c", type=str, required=True,
-                        help="Module config YAML (03_configs/01b_dock6_run.yaml)")
+                        help="Module config YAML")
     parser.add_argument("--campaign", type=str, required=True,
                         help="Campaign config YAML")
-
-    # Overrides
-    parser.add_argument("--output", "-o", type=str, default=None,
-                        help="Output directory")
+    parser.add_argument("--output", "-o", type=str, default=None)
     parser.add_argument("--name", type=str, default=None,
-                        help="Dock only this molecule (by name)")
+                        help="Dock only this molecule")
+    parser.add_argument("--method", type=str, choices=["flex", "rigid"], default=None)
+    parser.add_argument("--orientations", type=int, default=None)
+    parser.add_argument("--timeout", type=int, default=None)
     parser.add_argument("--dry-run", action="store_true",
-                        help="Generate input files only, don't execute dock6")
-    parser.add_argument("--timeout", type=int, default=None,
-                        help="Timeout per molecule (seconds, overrides YAML)")
-    parser.add_argument("--method", type=str, default=None,
-                        choices=["flex", "rigid"],
-                        help="Search method (overrides YAML)")
-    parser.add_argument("--orientations", type=int, default=None,
-                        help="Max orientations (overrides YAML)")
+                        help="Generate input files only")
     parser.add_argument("--log-level", type=str, default=None,
                         choices=["DEBUG", "INFO", "WARNING", "ERROR"])
 
@@ -116,39 +91,40 @@ def main():
     campaign_dir = Path(args.campaign).parent
     campaign_id = cc.get("campaign_id", campaign_dir.name)
 
-    # --- Resolve grids: check 01a output first, then campaign dir ---
+    # --- CHANGED: Grid routing: 01a → 01b ---
     gc = cc.get("grids", {})
-    grid_dir_01a = Path("05_results") / campaign_id / "01a_grid_generation"
+    grid_dir_01b = Path("05_results") / campaign_id / "01b_grid_generation"
 
-    if (grid_dir_01a / gc.get("spheres_file", "spheres_ligand.sph")).exists():
-        grid_path = grid_dir_01a
-        logger.info(f"Using grids from 01a: {grid_path}")
+    if (grid_dir_01b / gc.get("spheres_file", "spheres_ligand.sph")).exists():
+        grid_path = grid_dir_01b
+        logger.info(f"Using grids from 01b: {grid_path}")
     else:
         grid_dir = gc.get("grid_dir", "grids/")
         grid_path = Path(grid_dir) if Path(grid_dir).is_absolute() else campaign_dir / grid_dir
         if (grid_path / gc.get("spheres_file", "spheres_ligand.sph")).exists():
             logger.info(f"Using grids from campaign: {grid_path}")
         else:
-            logger.warning(f"Grids not found in 01a ({grid_dir_01a}) or campaign ({grid_path})")
+            logger.warning(f"Grids not found in 01b ({grid_dir_01b}) or campaign ({grid_path})")
 
     spheres_file = str(grid_path / gc.get("spheres_file", "spheres_ligand.sph"))
     grid_prefix = resolve_grid_prefix(
         str(grid_path), gc.get("energy_grid", "ligand.nrg"),
     )
 
-    # --- Ligand directory: check 00d first, then 00c fallback ---
-    ligand_dir_00d = Path("05_results") / campaign_id / "00d_antechamber" / "mol2"
+    # --- CHANGED: Ligand routing: 00d → 01a ---
+    ligand_dir_01a = Path("05_results") / campaign_id / "01a_antechamber" / "mol2"
     ligand_dir_00c = Path("05_results") / campaign_id / "00c_ligand_preparation" / "mol2"
 
-    if ligand_dir_00d.exists():
-        ligand_dir = str(ligand_dir_00d)
+    if ligand_dir_01a.exists():
+        ligand_dir = str(ligand_dir_01a)
     elif ligand_dir_00c.exists():
         ligand_dir = str(ligand_dir_00c)
     else:
-        ligand_dir = str(ligand_dir_00d)  # Will fail with clear error below
+        ligand_dir = str(ligand_dir_01a)  # Will fail with clear error below
 
+    # --- CHANGED: Output subdir: 01b → 01c ---
     output_dir = args.output or str(
-        Path("05_results") / campaign_id / "01b_dock6_run"
+        Path("05_results") / campaign_id / "01c_dock6_run"
     )
 
     # --- Module config ---
@@ -163,7 +139,7 @@ def main():
     timeout_per_molecule = params.get("timeout_per_molecule", 600)
     log_level = params.get("log_level", "INFO")
 
-    # Extra DOCK6 params (passed through to template)
+    # Extra DOCK6 params
     extra_params = {}
     for key in ["min_anchor_size", "pruning_max_orients", "pruning_clustering_cutoff",
                 "pruning_conformer_score_cutoff", "simplex_max_cycles",
@@ -173,7 +149,7 @@ def main():
         if key in params:
             extra_params[key] = params[key]
 
-    # --- CLI overrides ---
+    # CLI overrides
     if args.method:
         search_method = args.method
     if args.orientations:
@@ -191,9 +167,9 @@ def main():
 
     if not Path(ligand_dir).exists():
         logger.error(f"Ligand directory not found: {ligand_dir}")
-        logger.error(f"  Tried: {ligand_dir_00d}")
+        logger.error(f"  Tried: {ligand_dir_01a}")
         logger.error(f"  Tried: {ligand_dir_00c}")
-        logger.error("Run module 00d (antechamber) first.")
+        logger.error("Run module 01a (antechamber) first.")
         return 1
 
     # =========================================================================
@@ -203,7 +179,8 @@ def main():
     if log_level:
         logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
-    log_path = Path(output_dir) / "01b_dock6_run.log"
+    # --- CHANGED: log file name ---
+    log_path = Path(output_dir) / "01c_dock6_run.log"
     setup_log_file(log_path, log_level)
 
     # =========================================================================
@@ -211,7 +188,7 @@ def main():
     # =========================================================================
 
     logger.info("=" * 60)
-    logger.info("  MOLECULAR_DOCKING - Module 01b: DOCK6 Run")
+    logger.info("  MOLECULAR_DOCKING - Module 01c: DOCK6 Run")
     logger.info("=" * 60)
     logger.info(f"Campaign:      {campaign_id}")
     logger.info(f"Ligands:       {ligand_dir}")
@@ -255,8 +232,9 @@ def main():
         logger.info(f"  {result['n_ok']}/{result['n_total']} dockings completed "
                      f"({result['total_runtime_sec']:.0f}s)")
     logger.info(f"{'=' * 60}")
-    logger.info(f"Next: python 02_scripts/02a_score_collection.py "
-                f"--config 03_configs/02a_score_collection.yaml "
+    # --- CHANGED: next step reference ---
+    logger.info(f"Next: python 02_scripts/01d_score_collection.py "
+                f"--config 03_configs/01d_score_collection.yaml "
                 f"--campaign {args.campaign}")
 
     return 0 if result["n_failed"] == 0 else 1

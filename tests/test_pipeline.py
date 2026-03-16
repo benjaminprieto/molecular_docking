@@ -28,5 +28,5 @@ class TestGridValidation:
 
 class TestScoreCollector:
     def test_import(self):
-        from molecular_docking.m02_collection.score_collector import run_score_collection
+        from molecular_docking.m01_docking.score_collector import run_score_collection
         assert callable(run_score_collection)

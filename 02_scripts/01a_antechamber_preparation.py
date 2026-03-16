@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-00d Antechamber Preparation - CLI
-====================================
+01a Antechamber Preparation - CLI (DOCK6-specific)
+=====================================================
 Converts protonated SDF files from 00c into DOCK6-ready mol2 files via antechamber.
+
+This module is DOCK6-specific — Vina does not need mol2 files.
 
 Input: Individual SDF files from 00c (structures/pH{value}/*.sdf)
 Output: mol2/*.mol2 (AM1-BCC charges, GAFF2 atom types)
@@ -10,23 +12,19 @@ Output: mol2/*.mol2 (AM1-BCC charges, GAFF2 atom types)
 Reads campaign_config.yaml:
     - docking_ph          -> selects pH folder from 00c
 
-Reads module YAML (03_configs/00d_antechamber_preparation.yaml):
+Reads module YAML (03_configs/01a_antechamber_preparation.yaml):
     - charge_method, atom_type, timeout, obabel_fallback
 
-Usage (PyCharm Pro terminal — single line):
-    python 02_scripts/00d_antechamber_preparation.py --config 03_configs/00d_antechamber_preparation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+Hardcoded upstream paths:
+    - 05_results/{campaign_id}/00c_ionization_profiling/.../structures/pH{xx}/
+    - Output: 05_results/{campaign_id}/01a_antechamber/
 
-    # Override SDF directory:
-    python 02_scripts/00d_antechamber_preparation.py --config 03_configs/00d_antechamber_preparation.yaml --sdf-dir 05_results/example_campaign/00c_ionization_profiling/20260310_120000/structures/pH72
-
-PyCharm Run Configuration:
-    Script:     02_scripts/00d_antechamber_preparation.py
-    Parameters: --config 03_configs/00d_antechamber_preparation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
-    Working dir: (project root)
+Usage:
+    python 02_scripts/01a_antechamber_preparation.py --config 03_configs/01a_antechamber_preparation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
 Project: molecular_docking
-Module: 00d
-Version: 1.1
+Module: 01a (DOCK6 engine)
+Version: 1.2 — renumbered from 00d (2026-03-16)
 """
 
 import argparse
@@ -42,7 +40,7 @@ logging.basicConfig(
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "01_src"))
 
-from molecular_docking.m00_preparation.antechamber_preparation import run_antechamber_preparation
+from molecular_docking.m01_docking.antechamber_preparation import run_antechamber_preparation
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +95,7 @@ def _find_ph_folder(structures_dir: Path, docking_ph: float) -> Path:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert protonated SDF files to DOCK6-ready mol2 via antechamber",
+        description="01a Antechamber — Convert protonated SDFs to DOCK6-ready mol2 (DOCK6 engine)",
     )
     parser.add_argument("--config", "-c", type=str, default=None,
                         help="Module config YAML")
@@ -145,7 +143,8 @@ def main():
             if structures.exists():
                 sdf_dir = str(_find_ph_folder(structures, docking_ph))
 
-        output_dir = str(Path("05_results") / campaign_id / "00d_antechamber")
+        # --- CHANGED: 00d_antechamber → 01a_antechamber ---
+        output_dir = str(Path("05_results") / campaign_id / "01a_antechamber")
 
     if args.config:
         mc = load_yaml(args.config)
@@ -175,7 +174,7 @@ def main():
         parser.error("Provide --campaign or --sdf-dir. "
                      "Run 00c first to generate protonated SDF files.")
     if not output_dir:
-        output_dir = "05_results/00d_antechamber"
+        output_dir = "05_results/01a_antechamber"
 
     if not Path(sdf_dir).exists():
         logger.error(f"SDF directory not found: {sdf_dir}")
@@ -190,11 +189,12 @@ def main():
     if log_level:
         logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
-    log_path = Path(output_dir) / "00d_antechamber.log"
+    # --- CHANGED: log file name ---
+    log_path = Path(output_dir) / "01a_antechamber.log"
     setup_log_file(log_path, log_level)
 
     logger.info("=" * 60)
-    logger.info("  MOLECULAR_DOCKING - Module 00d: Antechamber")
+    logger.info("  MOLECULAR_DOCKING - Module 01a: Antechamber (DOCK6)")
     logger.info("=" * 60)
     logger.info(f"Campaign:     {campaign_id}")
     logger.info(f"SDF dir:      {sdf_dir} ({n_sdf} files)")
@@ -216,8 +216,9 @@ def main():
         return 1
 
     logger.info("")
-    logger.info(f"Next: python 02_scripts/01b_dock6_run.py "
-                f"--config 03_configs/01b_dock6_run.yaml "
+    # --- CHANGED: next step references ---
+    logger.info(f"Next: python 02_scripts/01b_grid_generation.py "
+                f"--config 03_configs/01b_grid_generation.yaml "
                 f"--campaign {args.campaign or '<campaign_config.yaml>'}")
 
     return 0 if result["n_failed"] == 0 else 1

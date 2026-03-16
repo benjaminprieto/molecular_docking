@@ -1,29 +1,23 @@
 #!/usr/bin/env python3
 """
-02a Score Collection - CLI
-============================
+01d Score Collection - CLI (DOCK6-specific)
+=============================================
 Collects DOCK6 docking scores, ranks molecules, and produces Excel output.
 
-Scans 01b output for scored mol2 files, extracts Grid_Score per pose,
+Scans 01c output for scored mol2 files, extracts Grid_Score per pose,
 selects best pose per molecule, and generates ranked Excel + CSV.
 
-Reads campaign_config.yaml:
-    - campaign_id
+Hardcoded upstream paths:
+    - 05_results/{campaign_id}/01c_dock6_run/{name}/{name}_scored.mol2
+    - 05_results/{campaign_id}/00a_molecule_parser/unique_molecules.csv
+    - Output: 05_results/{campaign_id}/01d_score_collection/
 
-Reads module YAML (03_configs/02a_score_collection.yaml):
-    - score_key, max_molecules, extract_best_pose_mol2, compute_properties
-
-Usage (PyCharm Pro terminal — single line):
-    python 02_scripts/02a_score_collection.py --config 03_configs/02a_score_collection.yaml --campaign 04_data/campaigns/example_pH72/campaign_config.yaml
-
-PyCharm Run Configuration:
-    Script:     02_scripts/02a_score_collection.py
-    Parameters: --config 03_configs/02a_score_collection.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
-    Working dir: (project root)
+Usage:
+    python 02_scripts/01d_score_collection.py --config 03_configs/01d_score_collection.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
 Project: molecular_docking
-Module: 02a
-Version: 1.0
+Module: 01d (DOCK6 engine) — renumbered from 02a (2026-03-16)
+Version: 1.1
 """
 
 import argparse
@@ -50,7 +44,6 @@ def load_yaml(path):
 
 
 def setup_log_file(log_path: Path, log_level: str = "INFO"):
-    """Add file handler to root logger."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     fh = logging.FileHandler(str(log_path), encoding="utf-8")
     fh.setLevel(getattr(logging, log_level.upper(), logging.INFO))
@@ -60,7 +53,7 @@ def setup_log_file(log_path: Path, log_level: str = "INFO"):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Collect DOCK6 scores and produce ranked Excel",
+        description="01d Score Collection — Collect DOCK6 scores and produce ranked Excel (DOCK6 engine)",
     )
     parser.add_argument("--config", "-c", type=str, required=True,
                         help="Module config YAML")
@@ -69,7 +62,7 @@ def main():
     parser.add_argument("--output", "-o", type=str, default=None,
                         help="Output directory")
     parser.add_argument("--docking-dir", type=str, default=None,
-                        help="Override docking directory (default: 01b output)")
+                        help="Override docking directory (default: 01c output)")
     parser.add_argument("--log-level", type=str, default=None,
                         choices=["DEBUG", "INFO", "WARNING", "ERROR"])
 
@@ -81,15 +74,15 @@ def main():
     mc = load_yaml(args.config)
     params = mc.get("parameters", {})
 
-    # --- Resolve paths ---
+    # --- CHANGED: Resolve paths (01b → 01c, 02a → 01d) ---
     docking_dir = args.docking_dir or str(
-        Path("05_results") / campaign_id / "01b_dock6_run"
+        Path("05_results") / campaign_id / "01c_dock6_run"
     )
     molecules_csv = str(
         Path("05_results") / campaign_id / "00a_molecule_parser" / "unique_molecules.csv"
     )
     output_dir = args.output or str(
-        Path("05_results") / campaign_id / "02a_score_collection"
+        Path("05_results") / campaign_id / "01d_score_collection"
     )
 
     # --- Params ---
@@ -107,12 +100,12 @@ def main():
 
     # --- Setup logging ---
     logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
-    log_path = Path(output_dir) / "02a_score_collection.log"
+    log_path = Path(output_dir) / "01d_score_collection.log"
     setup_log_file(log_path, log_level)
 
     # --- Execute ---
     logger.info("=" * 60)
-    logger.info("  MOLECULAR_DOCKING - Module 02a: Score Collection")
+    logger.info("  MOLECULAR_DOCKING - Module 01d: Score Collection (DOCK6)")
     logger.info("=" * 60)
     logger.info(f"Campaign:     {campaign_id}")
     logger.info(f"Docking dir:  {docking_dir}")
@@ -138,9 +131,9 @@ def main():
         return 1
 
     logger.info("")
-    logger.info(f"Next steps:")
-    logger.info(f"  - Open {result.get('output_xlsx')} to review scores")
-    logger.info(f"  - Best poses in {result.get('mol2_dir')}/")
+    logger.info("DOCK6 pipeline complete.")
+    logger.info(f"  Scores: {result.get('output_xlsx')}")
+    logger.info(f"  Poses:  {result.get('mol2_dir')}/")
 
     return 0
 

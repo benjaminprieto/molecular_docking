@@ -1,0 +1,31 @@
+# =============================================================================
+# 01d Score Collection - Configuration (DOCK6 engine)
+# =============================================================================
+# Collects DOCK6 docking scores, ranks molecules, and produces Excel output.
+#
+# INPUT:  05_results/{campaign_id}/01c_dock6_run/{name}/{name}_scored.mol2
+# OUTPUT: 05_results/{campaign_id}/01d_score_collection/
+#
+# Renumbered from 02a (2026-03-16).
+#
+# Project: molecular_docking
+# Module: 01d (DOCK6)
+# Version: 1.1
+# =============================================================================
+
+parameters:
+  score_key: "Grid_Score"
+  max_molecules: 500
+  extract_best_pose_mol2: true
+  keep_all_poses: false
+  compute_properties: true
+  log_level: "INFO"
+
+outputs:
+  subdir: "01d_score_collection"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/01d_score_collection.py --config 03_configs/01d_score_collection.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+# =============================================================================

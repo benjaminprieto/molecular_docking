@@ -1,0 +1,96 @@
+# =============================================================================
+# 02a Vina Preparation - Configuration (molecular_docking v1.0)
+# =============================================================================
+# Prepara receptor PDBQT + ligandos PDBQT + binding box para Vina.
+#
+# CONVERSIÓN DE FORMATOS:
+#   Receptor: mk_prepare_receptor.py (Meeko) → ADFRsuite → OpenBabel fallback
+#   Ligandos: mk_prepare_ligand.py (Meeko) — SDF de 00c → PDBQT
+#
+# INPUT PATHS come from campaign_config.yaml + hardcoded upstream conventions:
+#   - Receptor PDB:   05_results/{campaign_id}/00b_receptor_preparation/rec_noH.pdb
+#   - Ligand SDFs:    05_results/{campaign_id}/00c_ionization_profiling/sdf/
+#   - Molecules CSV:  05_results/{campaign_id}/00a_molecule_parser/unique_molecules.csv
+#   - Output:         05_results/{campaign_id}/02a_vina_preparation/
+#
+# PRECONDITIONS:
+#   - Module 00b must have been run (rec_noH.pdb)
+#   - Module 00c must have been run (protonated SDFs)
+#   - Meeko installed: pip install meeko
+#
+# Project: molecular_docking
+# Module: 02a
+# Version: 1.0
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# PARAMETERS
+# -----------------------------------------------------------------------------
+parameters:
+
+  # --- Binding Box ---
+
+  # Padding alrededor del ligando de referencia (Angstroms).
+  # El box se calcula como la envolvente del ligando ± padding.
+  #
+  # Valores típicos:
+  #   4.0 = compacto (solo la cavidad)
+  #   6.0 = default (espacio razonable para exploración)
+  #   8.0 = amplio (para moléculas grandes o flexibles)
+  binding_box_padding: 6.0
+
+  # --- Receptor Processing ---
+  remove_water: true
+  remove_hetatm: true
+
+  # --- Ligand Processing ---
+
+  # Agregar hidrógenos a los ligandos (false si 00c ya los protonó)
+  add_hydrogens: false
+
+  # --- Reference Ligand ---
+
+  # Incluir ligando de referencia como molécula control para Vina.
+  # Útil como control interno (el cristalográfico debería tener buen score).
+  include_reference: true
+
+  # --- Metadata ---
+  name_column: "Name"
+  smiles_column: "SMILES_mol2"
+
+  # --- Logging ---
+  log_level: "INFO"
+
+# -----------------------------------------------------------------------------
+# OUTPUT
+# -----------------------------------------------------------------------------
+outputs:
+  subdir: "02a_vina_preparation"
+
+  # Generated files:
+  #   receptor.pdbqt             Receptor en formato PDBQT
+  #   ligands_pdbqt/             PDBQTs individuales por molécula
+  #     {name}.pdbqt
+  #   binding_box.json           Centro, tamaño, fuente, volumen
+  #   vina_inputs.json           Metadata estructurada para 02b
+  #   02a_vina_preparation.log
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/02a_vina_preparation.py --config 03_configs/02a_vina_preparation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#
+# # Override padding:
+# python 02_scripts/02a_vina_preparation.py --config 03_configs/02a_vina_preparation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --padding 8.0
+#
+# # Direct mode:
+# python 02_scripts/02a_vina_preparation.py --receptor rec_noH.pdb --sdf-dir sdf/ --molecules unique_molecules.csv --reference UDX.mol2 --output results/02a/
+#
+# # Check dependencies:
+# python 02_scripts/02a_vina_preparation.py --check
+#
+# PyCharm Run Configuration:
+#   Script:     02_scripts/02a_vina_preparation.py
+#   Parameters: --config 03_configs/02a_vina_preparation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#   Working dir: (project root)
+# =============================================================================

@@ -1,0 +1,40 @@
+# =============================================================================
+# 01a Antechamber Preparation - Configuration (DOCK6 engine)
+# =============================================================================
+# Converts protonated SDF files to DOCK6-ready mol2 via antechamber.
+# DOCK6-specific — Vina does not need mol2 files.
+#
+# INPUT:  05_results/{campaign_id}/00c_ionization_profiling/.../structures/pH{xx}/
+# OUTPUT: 05_results/{campaign_id}/01a_antechamber/mol2/
+#
+# Renumbered from 00d (2026-03-16) — antechamber is DOCK6-specific.
+#
+# Project: molecular_docking
+# Module: 01a (DOCK6)
+# Version: 1.2
+# =============================================================================
+
+parameters:
+  # Charge method: "bcc" (AM1-BCC, recommended) or "gas" (Gasteiger, fast)
+  charge_method: "bcc"
+
+  # Atom type: "gaff2" (recommended) or "gaff"
+  atom_type: "gaff2"
+
+  # Fall back to obabel if antechamber fails
+  obabel_fallback: true
+
+  # Timeout per molecule (seconds)
+  timeout_per_molecule: 300
+
+  # Log level
+  log_level: "INFO"
+
+outputs:
+  subdir: "01a_antechamber"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/01a_antechamber_preparation.py --config 03_configs/01a_antechamber_preparation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+# =============================================================================

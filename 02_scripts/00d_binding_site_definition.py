@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-00e Binding Site Definition - CLI
+00d Binding Site Definition - CLI
 ====================================
 Identifica el binding site y recorta el receptor para grid generation.
 
@@ -15,25 +15,25 @@ Reads campaign_config.yaml:
     - grids.binding_site.radius          -> radio sphere_selector (no trim)
     - receptor.chain                     -> filtro de cadena
 
-Reads module YAML (03_configs/00e_binding_site_definition.yaml):
+Reads module YAML (03_configs/00d_binding_site_definition.yaml):
     - contact_cutoff     -> distancia para contactos ligando-proteina
     - trim_radius        -> radio de recorte del PDB
     - keep_whole_residues
 
 Input:  05_results/{campaign_id}/00b_receptor_preparation/rec_noH.pdb
-Output: 05_results/{campaign_id}/00e_binding_site/
-    - rec_noH_site.pdb            (PDB recortado para 01a)
+Output: 05_results/{campaign_id}/00d_binding_site/
+    - rec_noH_site.pdb            (PDB recortado para 01b)
     - binding_site_report.json
     - binding_site_summary.txt
 
 Usage:
-    python 02_scripts/00e_binding_site_definition.py \\
-        --config 03_configs/00e_binding_site_definition.yaml \\
+    python 02_scripts/00d_binding_site_definition.py \
+        --config 03_configs/00d_binding_site_definition.yaml \
         --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
 Project: molecular_docking
-Module: 00e
-Version: 1.0
+Module: 00d — renumbered from 00e (2026-03-16)
+Version: 1.1
 """
 
 import argparse
@@ -69,7 +69,7 @@ def setup_log_file(log_path: Path, log_level: str = "INFO"):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Define binding site and trim receptor PDB for grid generation",
+        description="00d Binding Site Definition — trim receptor PDB for grid generation",
     )
     parser.add_argument("--config", "-c", type=str, default=None,
                         help="Module config YAML")
@@ -82,7 +82,7 @@ def main():
     parser.add_argument("--reference-mol2", type=str, default=None,
                         help="Path to reference ligand mol2")
     parser.add_argument("--residues", nargs="+", default=None,
-                        help="Residue IDs, e.g. GLU529 TRP555 CYS574")
+                        help="Residue IDs, e.g. SER575 HIS335 ASP361 TRP392 GLU529 TRP555 CYS574")
     parser.add_argument("--center", nargs=3, type=float, default=None,
                         help="Binding site center: x y z")
     parser.add_argument("--output", "-o", type=str, default=None)
@@ -144,7 +144,8 @@ def main():
         elif method == "coordinates":
             center = bs.get("center")
 
-        output_dir = str(Path("05_results") / campaign_id / "00e_binding_site")
+        # --- CHANGED: 00e_binding_site → 00d_binding_site ---
+        output_dir = str(Path("05_results") / campaign_id / "00d_binding_site")
 
     # --- Module config ---
     if args.config:
@@ -180,7 +181,7 @@ def main():
     if not receptor_noH:
         parser.error("Provide --campaign or --receptor. Run 00b first.")
     if not output_dir:
-        output_dir = "05_results/00e_binding_site"
+        output_dir = "05_results/00d_binding_site"
 
     if not Path(receptor_noH).exists():
         logger.error(f"Receptor PDB not found: {receptor_noH}")
@@ -199,7 +200,8 @@ def main():
     if log_level:
         logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
-    log_path = Path(output_dir) / "00e_binding_site.log"
+    # --- CHANGED: log file name ---
+    log_path = Path(output_dir) / "00d_binding_site.log"
     setup_log_file(log_path, log_level)
 
     # =========================================================================
@@ -207,7 +209,7 @@ def main():
     # =========================================================================
 
     logger.info("=" * 60)
-    logger.info("  MOLECULAR_DOCKING - Module 00e: Binding Site Definition")
+    logger.info("  MOLECULAR_DOCKING - Module 00d: Binding Site Definition")
     logger.info("=" * 60)
     logger.info(f"Campaign:       {campaign_id}")
     logger.info(f"Receptor:       {receptor_noH}")
@@ -233,8 +235,9 @@ def main():
         return 1
 
     logger.info("")
-    logger.info(f"Next: python 02_scripts/01a_grid_generation.py "
-                f"--config 03_configs/01a_grid_generation.yaml "
+    # --- CHANGED: next step reference ---
+    logger.info(f"Next: python 02_scripts/01b_grid_generation.py "
+                f"--config 03_configs/01b_grid_generation.yaml "
                 f"--campaign {args.campaign or '<campaign_config.yaml>'}")
 
     return 0
