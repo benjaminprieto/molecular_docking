@@ -34,7 +34,7 @@ parameters:
 
   # Timeout por molécula (segundos)
   # Moléculas grandes (>50 heavy atoms) pueden necesitar más tiempo
-  timeout_per_molecule: 300
+  timeout_per_molecule: 600
 
   # Log level
   log_level: "INFO"

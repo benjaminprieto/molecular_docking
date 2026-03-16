@@ -36,9 +36,7 @@ Output: 05_results/{campaign_id}/00b_receptor_preparation/
 
 Usage:
     # Recommended (PDB2PQR + ChimeraX):
-    python 02_scripts/00b_receptor_preparation.py \\
-        --config 03_configs/00b_receptor_preparation.yaml \\
-        --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+    python 02_scripts/00b_receptor_preparation.py --config 03_configs/00b_receptor_preparation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
     # Override pH:
     python 02_scripts/00b_receptor_preparation.py \\

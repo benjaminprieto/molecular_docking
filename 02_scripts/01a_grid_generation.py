@@ -116,10 +116,18 @@ def main():
     # --- Resolve receptor paths ---
     rec_config = cc.get("receptor", {})
     receptor_prep_dir = Path("05_results") / campaign_id / "00b_receptor_preparation"
+    binding_site_dir = Path("05_results") / campaign_id / "00e_binding_site"
 
-    # rec_noH.pdb: always use 00b output (full receptor)
-    if (receptor_prep_dir / "rec_noH.pdb").exists():
+    # rec_noH.pdb for DMS/sphgen: prefer trimmed from 00e (avoids sphgen overflow),
+    # fallback to full receptor from 00b
+    rec_noH_site = binding_site_dir / "rec_noH_site.pdb"
+    if rec_noH_site.exists():
+        rec_noH = rec_noH_site
+        logger.info(f"Using trimmed PDB from 00e: {rec_noH}")
+    elif (receptor_prep_dir / "rec_noH.pdb").exists():
         rec_noH = receptor_prep_dir / "rec_noH.pdb"
+        logger.warning("Using full receptor (no 00e trimming). "
+                       "sphgen may fail on large proteins — run 00e first.")
     else:
         rec_noH = campaign_dir / rec_config.get("pdb", "receptor/receptor.pdb")
         logger.info(f"Using campaign receptor as noH PDB: {rec_noH}")

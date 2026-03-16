@@ -5,13 +5,22 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="88ab89a4-df8a-4554-a3f5-4d87aade3b19" name="Changes" comment="Resolve conflicts: keep local PC version">
-      <change afterPath="$PROJECT_DIR$/run_pipeline.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m00_preparation/antechamber_preparation.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m00_preparation/antechamber_preparation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/dock6_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/dock6_runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/00d_antechamber_preparation.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/00d_antechamber_preparation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m02_collection/score_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m02_collection/score_collector.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/02_scripts/00b_receptor_preparation.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/00b_receptor_preparation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/02_scripts/01a_grid_generation.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/01a_grid_generation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/03_configs/01a_grid_generation.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/03_configs/01a_grid_generation.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/02_scripts/02a_score_collection.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/02a_score_collection.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/03_configs/00d_antechamber_preparation.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/03_configs/00d_antechamber_preparation.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/03_configs/02a_score_collection.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/03_configs/02a_score_collection.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/campaign_config.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/grids/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/molecules/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/molecules/UDX_mol2.mol2" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/molecules/UDX_sdf.sdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/molecules/query_results.sdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/receptor/.gitkeep" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/example_campaign/receptor/XT1_6EJ7.pdb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/run_pipeline.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run_pipeline.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -64,7 +73,7 @@
     &quot;WebServerToolWindowPanel.toolwindow.show.permissions&quot;: &quot;false&quot;,
     &quot;WebServerToolWindowPanel.toolwindow.show.size&quot;: &quot;false&quot;,
     &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/benja/PycharmProjects/molecular_docking&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/benja/PycharmProjects/molecular_docking/04_data/campaigns/example_campaign/molecules&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -76,11 +85,11 @@
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\04_data\campaigns\example_campaign\molecules" />
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking" />
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking\01_src\molecular_docking\m00_preparation" />
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking\03_configs" />
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking\02_scripts" />
-      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\04_data\campaigns\example_campaign\molecules" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking\04_data\campaigns\example_campaign\receptor" />
@@ -134,7 +143,8 @@
       <workItem from="1772890622452" duration="28152000" />
       <workItem from="1773002330676" duration="24994000" />
       <workItem from="1773342055522" duration="1723000" />
-      <workItem from="1773495582836" duration="2777000" />
+      <workItem from="1773495582836" duration="17383000" />
+      <workItem from="1773668888897" duration="3773000" />
     </task>
     <task id="LOCAL-00001" summary="Resolve conflicts: keep local PC version">
       <option name="closed" value="true" />
@@ -160,7 +170,15 @@
       <option name="project" value="LOCAL" />
       <updated>1773438945176</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Resolve conflicts: keep local PC version">
+      <option name="closed" value="true" />
+      <created>1773498570418</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1773498570418</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
