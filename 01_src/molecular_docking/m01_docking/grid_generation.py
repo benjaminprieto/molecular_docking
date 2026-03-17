@@ -563,7 +563,7 @@ def generate_grid(
 
         if vdw_defn_file is None:
             logger.error("    vdw_AMBER_parm99.defn not found.")
-            logger.error("    Set dock6_home in 03_configs/01a_grid_generation.yaml")
+            logger.error("    Set dock6_home in 03_configs/01b_grid_generation.yaml")
             logger.error(f"    Searched: {[str(p) for p in search_paths]}")
             return None
 

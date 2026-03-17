@@ -16,7 +16,7 @@ DOCK6 scored mol2 format:
 Multiple poses per file: each pose has its own ## block + MOLECULE block.
 Best pose = lowest Grid_Score (most negative = best binding).
 
-Location: 01_src/molecular_docking/m02_collection/score_collector.py
+Location: 01_src/molecular_docking/m01_docking/score_collector.py
 Project: molecular_docking
 Module: 02a (core)
 Version: 1.0
@@ -242,7 +242,7 @@ def run_score_collection(
     produces Excel and optionally extracts best pose mol2 files.
 
     Args:
-        docking_dir: Path to 01b_dock6_run output
+        docking_dir: Path to 01c_dock6_run output
         output_dir: Path for score collection output
         molecules_csv: Optional path to unique_molecules.csv (for metadata merge)
         score_key: Score field to rank by

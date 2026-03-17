@@ -19,7 +19,7 @@ Grid routing (v3.0):
 
 Ligand routing (v3.0):
     1. Busca mol2 en 05_results/{campaign_id}/01a_antechamber/mol2/
-    2. Si no existe, busca en 00c_ligand_preparation/mol2/
+    2. Fallback: 00c_ligand_preparation/mol2/ (legacy)
 
 Output: 05_results/{campaign_id}/01c_dock6_run/
 
@@ -91,7 +91,7 @@ def main():
     campaign_dir = Path(args.campaign).parent
     campaign_id = cc.get("campaign_id", campaign_dir.name)
 
-    # --- CHANGED: Grid routing: 01a → 01b ---
+
     gc = cc.get("grids", {})
     grid_dir_01b = Path("05_results") / campaign_id / "01b_grid_generation"
 
@@ -111,7 +111,7 @@ def main():
         str(grid_path), gc.get("energy_grid", "ligand.nrg"),
     )
 
-    # --- CHANGED: Ligand routing: 00d → 01a ---
+
     ligand_dir_01a = Path("05_results") / campaign_id / "01a_antechamber" / "mol2"
     ligand_dir_00c = Path("05_results") / campaign_id / "00c_ligand_preparation" / "mol2"
 
@@ -122,7 +122,7 @@ def main():
     else:
         ligand_dir = str(ligand_dir_01a)  # Will fail with clear error below
 
-    # --- CHANGED: Output subdir: 01b → 01c ---
+
     output_dir = args.output or str(
         Path("05_results") / campaign_id / "01c_dock6_run"
     )
@@ -179,7 +179,7 @@ def main():
     if log_level:
         logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
-    # --- CHANGED: log file name ---
+
     log_path = Path(output_dir) / "01c_dock6_run.log"
     setup_log_file(log_path, log_level)
 
@@ -232,7 +232,7 @@ def main():
         logger.info(f"  {result['n_ok']}/{result['n_total']} dockings completed "
                      f"({result['total_runtime_sec']:.0f}s)")
     logger.info(f"{'=' * 60}")
-    # --- CHANGED: next step reference ---
+
     logger.info(f"Next: python 02_scripts/01d_score_collection.py "
                 f"--config 03_configs/01d_score_collection.yaml "
                 f"--campaign {args.campaign}")

@@ -58,13 +58,16 @@ molecular_docking/
 │   │   ├── molecule_parser.py          00a — parseo de moléculas
 │   │   ├── receptor_preparation.py     00b — receptor → mol2 DOCK6-ready
 │   │   ├── ionization_profiling.py     00c — protonación de ligandos al pH
-│   │   ├── antechamber_preparation.py  00d — mol2 con cargas AM1-BCC
-│   │   └── binding_site_definition.py  00e — recorte del receptor (opcional)
-│   ├── m01_docking/
-│   │   ├── grid_generation.py          01a — DMS → spheres → grids
-│   │   └── dock6_runner.py             01b — dock6 por molécula
-│   └── m02_collection/
-│       └── score_collector.py          02a — parseo de scores → Excel
+│   │   └── binding_site_definition.py  00d — recorte del receptor (opcional)
+│   ├── m01_docking/                    DOCK6 engine
+│   │   ├── antechamber_preparation.py  01a — mol2 con cargas AM1-BCC
+│   │   ├── grid_generation.py          01b — DMS → spheres → grids
+│   │   ├── dock6_runner.py             01c — dock6 por molécula
+│   │   └── score_collector.py          01d — parseo de scores → Excel
+│   └── m02_vina/                       Vina engine
+│       ├── vina_preparation.py         02a — receptor/ligandos → PDBQT
+│       ├── vina_runner.py              02b — Vina/Vina-GPU docking
+│       └── vina_score_collector.py     02c — scores → CSV/Excel
 ├── 02_scripts/                     CLI scripts (argparse + YAML → core)
 ├── 03_configs/                     YAML por módulo (parámetros algorítmicos)
 ├── 04_data/campaigns/              Campañas (receptor + moléculas + grids)
@@ -81,14 +84,22 @@ molecular_docking/
 ## Flujo del pipeline
 
 ```
+Shared preparation:
 00a molecule_parser       → unique_molecules.csv + .sdf
 00b receptor_preparation  → rec_charged.mol2 + rec_noH.pdb
 00c ionization_profiling  → SDF protonados por pH
-00d antechamber           → mol2 con AM1-BCC charges
-00e binding_site_def      → rec_noH_site.pdb (opcional)
-01a grid_generation       → DMS, spheres, box, grid.nrg/bmp
-01b dock6_run             → scored mol2 por molécula
-02a score_collection      → Excel compatible dock2profile
+00d binding_site_def      → rec_noH_site.pdb (opcional)
+
+DOCK6 engine:
+01a antechamber           → mol2 con AM1-BCC charges
+01b grid_generation       → DMS, spheres, box, grid.nrg/bmp
+01c dock6_run             → scored mol2 por molécula
+01d score_collection      → Excel compatible dock2profile
+
+Vina engine:
+02a vina_preparation      → receptor.pdbqt + ligandos PDBQT
+02b vina_runner           → Vina/Vina-GPU docking
+02c vina_score_collector  → scores CSV/Excel
 ```
 
 ## Uso
@@ -106,6 +117,8 @@ Editar `campaign_config.yaml` con el receptor, moléculas, y pH de docking.
 Desde la raíz del proyecto (o como Run Configurations en PyCharm):
 
 ```bash
+# === Shared preparation ===
+
 # 00a — Parsear moléculas
 python 02_scripts/00a_molecule_parser.py --config 03_configs/00a_molecule_parser.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
 
@@ -115,14 +128,38 @@ python 02_scripts/00b_receptor_preparation.py --config 03_configs/00b_receptor_p
 # 00c — Protonar ligandos
 python 02_scripts/00c_ionization_profiling.py --config 03_configs/00c_ionization_profiling.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
 
-# 00d — Antechamber (AM1-BCC charges)
-python 02_scripts/00d_antechamber_preparation.py --config 03_configs/00d_antechamber_preparation.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
+# 00d — Binding site definition (recorte del receptor)
+python 02_scripts/00d_binding_site_definition.py --config 03_configs/00d_binding_site_definition.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
 
-# 01a — Generar grids
-python 02_scripts/01a_grid_generation.py --config 03_configs/01a_grid_generation.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
+# === DOCK6 engine ===
 
-# 01b — DOCK6 docking
-python 02_scripts/01b_dock6_run.py --config 03_configs/01b_dock6_run.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
+# 01a — Antechamber (AM1-BCC charges)
+python 02_scripts/01a_antechamber_preparation.py --config 03_configs/01a_antechamber_preparation.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
+
+# 01b — Generar grids
+python 02_scripts/01b_grid_generation.py --config 03_configs/01b_grid_generation.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
+
+# 01c — DOCK6 docking
+python 02_scripts/01c_dock6_run.py --config 03_configs/01c_dock6_run.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
+
+# 01d — DOCK6 score collection
+python 02_scripts/01d_score_collection.py --config 03_configs/01d_score_collection.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
+
+# === Vina engine ===
+
+# 02a — Vina preparation (PDBQT conversion + binding box)
+python 02_scripts/02a_vina_preparation.py --config 03_configs/02a_vina_preparation.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
+
+# 02b — Vina docking
+python 02_scripts/02b_vina_runner.py --config 03_configs/02b_vina_runner.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
+
+# 02c — Vina score collection
+python 02_scripts/02c_vina_score_collector.py --config 03_configs/02c_vina_score_collector.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
+
+# === Or run everything at once ===
+bash run_pipeline.sh mi_campana              # both engines
+bash run_pipeline.sh mi_campana dock6        # DOCK6 only
+bash run_pipeline.sh mi_campana vina         # Vina only
 ```
 
 ### PyCharm Run Configuration

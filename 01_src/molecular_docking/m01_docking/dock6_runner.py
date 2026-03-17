@@ -22,7 +22,7 @@ Pipeline por molecula:
     4. Verificar output ({name}_scored.mol2)
 
 Input:
-  - mol2 individuales (de 00d: 00d_antechamber/mol2/{name}.mol2)
+  - mol2 individuales (de 01a: 01a_antechamber/mol2/{name}.mol2)
   - Grids DOCK6 (de 01a o pre-existentes)
   - spheres_ligand.sph
 

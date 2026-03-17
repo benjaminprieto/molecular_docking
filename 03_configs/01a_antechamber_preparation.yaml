@@ -25,7 +25,7 @@ parameters:
   obabel_fallback: true
 
   # Timeout per molecule (seconds)
-  timeout_per_molecule: 300
+  timeout_per_molecule: 600
 
   # Log level
   log_level: "INFO"

@@ -1,12 +1,12 @@
 """
-molecular_docking - DOCK6 Docking Pipeline
-============================================
-Generic pipeline for molecular docking with DOCK6.
+molecular_docking - Multi-Engine Docking Pipeline
+===================================================
+Generic pipeline for molecular docking with DOCK6 and AutoDock Vina.
 Produces outputs compatible with dock2profile.
 
 Modules:
-    m00_preparation  - Parse molecules, prepare receptor & ligands
-    m01_docking      - Grid generation & DOCK6 execution
-    m02_collection   - Score collection & Excel generation
+    m00_preparation  - Parse molecules, prepare receptor, binding site (shared)
+    m01_docking      - DOCK6 engine (antechamber, grids, docking, scores)
+    m02_vina         - Vina engine (PDBQT prep, docking, scores)
 """
-__version__ = "1.0.0"
+__version__ = "2.0.0"

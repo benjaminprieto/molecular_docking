@@ -203,8 +203,8 @@ def main():
     logger.info(f"  {result['n_unique']} unique molecules saved")
     logger.info(f"  CSV: {result.get('output_csv')}")
     logger.info(f"{'=' * 60}")
-    logger.info(f"Next: python 02_scripts/00c_ligand_preparation.py "
-                f"--config 03_configs/00c_ligand_preparation.yaml "
+    logger.info(f"Next: python 02_scripts/00b_receptor_preparation.py "
+                f"--config 03_configs/00b_receptor_preparation.yaml "
                 f"--campaign {args.campaign or '<campaign_config.yaml>'}")
     return 0
 

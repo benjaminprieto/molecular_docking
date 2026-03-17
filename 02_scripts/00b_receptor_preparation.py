@@ -27,7 +27,7 @@ Reads campaign_config.yaml:
 
 Output: 05_results/{campaign_id}/00b_receptor_preparation/
     - rec_charged.mol2       (DOCK6-ready: Sybyl types + AMBER ff14SB charges)
-    - rec_noH.pdb            (para DMS surface en 01a)
+    - rec_noH.pdb            (para DMS surface en 01b)
     - receptor_clean.pdb
     - chimerax.log           (log de ChimeraX, si aplica)
     - protonation_report.json

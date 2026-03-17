@@ -13,7 +13,7 @@ Binding site methods (from campaign_config.yaml):
 Hardcoded upstream paths:
     - 05_results/{campaign_id}/00b_receptor_preparation/rec_charged.mol2
     - 05_results/{campaign_id}/00b_receptor_preparation/rec_noH.pdb
-    - 05_results/{campaign_id}/00e_binding_site/rec_noH_site.pdb (preferred)
+    - 05_results/{campaign_id}/00d_binding_site/rec_noH_site.pdb (preferred)
     - Output: 05_results/{campaign_id}/01b_grid_generation/
 
 Usage:
@@ -185,7 +185,7 @@ def main():
         mc = load_yaml(args.config)
         params = mc.get("parameters", {})
 
-    # --- CHANGED: output subdir 01a → 01b ---
+
     output_dir = args.output or str(Path("05_results") / campaign_id / "01b_grid_generation")
 
     # --- Setup log file ---

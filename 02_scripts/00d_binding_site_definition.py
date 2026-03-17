@@ -144,7 +144,7 @@ def main():
         elif method == "coordinates":
             center = bs.get("center")
 
-        # --- CHANGED: 00e_binding_site → 00d_binding_site ---
+
         output_dir = str(Path("05_results") / campaign_id / "00d_binding_site")
 
     # --- Module config ---
@@ -200,7 +200,7 @@ def main():
     if log_level:
         logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
-    # --- CHANGED: log file name ---
+
     log_path = Path(output_dir) / "00d_binding_site.log"
     setup_log_file(log_path, log_level)
 
@@ -235,7 +235,7 @@ def main():
         return 1
 
     logger.info("")
-    # --- CHANGED: next step reference ---
+
     logger.info(f"Next: python 02_scripts/01b_grid_generation.py "
                 f"--config 03_configs/01b_grid_generation.yaml "
                 f"--campaign {args.campaign or '<campaign_config.yaml>'}")

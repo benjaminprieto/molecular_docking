@@ -33,7 +33,7 @@ logging.basicConfig(
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "01_src"))
 
-from molecular_docking.m02_collection.score_collector import run_score_collection
+from molecular_docking.m01_docking.score_collector import run_score_collection
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ def main():
     mc = load_yaml(args.config)
     params = mc.get("parameters", {})
 
-    # --- CHANGED: Resolve paths (01b → 01c, 02a → 01d) ---
+
     docking_dir = args.docking_dir or str(
         Path("05_results") / campaign_id / "01c_dock6_run"
     )

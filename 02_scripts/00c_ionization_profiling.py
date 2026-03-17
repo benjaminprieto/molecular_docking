@@ -196,9 +196,9 @@ def main():
     logger.info(f"Next: Review outputs in {result['output_dir']}")
     logger.info(f"  - ionization_profiling.csv/xlsx (charge profiles)")
     logger.info(f"  - structures/pH*/  (protonated SDF files)")
-    logger.info(f"Then run 00d:")
-    logger.info(f"  python 02_scripts/00d_antechamber.py "
-                f"--config 03_configs/00d_antechamber.yaml "
+    logger.info(f"Then run 01a:")
+    logger.info(f"  python 02_scripts/01a_antechamber_preparation.py "
+                f"--config 03_configs/01a_antechamber_preparation.yaml "
                 f"--campaign {args.campaign or '<campaign_config.yaml>'}")
 
     return 0

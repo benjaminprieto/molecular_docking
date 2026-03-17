@@ -143,7 +143,7 @@ def main():
             if structures.exists():
                 sdf_dir = str(_find_ph_folder(structures, docking_ph))
 
-        # --- CHANGED: 00d_antechamber → 01a_antechamber ---
+
         output_dir = str(Path("05_results") / campaign_id / "01a_antechamber")
 
     if args.config:
@@ -189,7 +189,7 @@ def main():
     if log_level:
         logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
-    # --- CHANGED: log file name ---
+
     log_path = Path(output_dir) / "01a_antechamber.log"
     setup_log_file(log_path, log_level)
 
@@ -216,7 +216,7 @@ def main():
         return 1
 
     logger.info("")
-    # --- CHANGED: next step references ---
+
     logger.info(f"Next: python 02_scripts/01b_grid_generation.py "
                 f"--config 03_configs/01b_grid_generation.yaml "
                 f"--campaign {args.campaign or '<campaign_config.yaml>'}")
