@@ -5,22 +5,30 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="88ab89a4-df8a-4554-a3f5-4d87aade3b19" name="Changes" comment="Resolve conflicts: keep local PC version">
+      <change afterPath="$PROJECT_DIR$/01_src/molecular_docking/m02_gnina/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/01_src/molecular_docking/m02_gnina/gnina_preparation.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/01_src/molecular_docking/m02_gnina/gnina_runner.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/01_src/molecular_docking/m02_gnina/gnina_score_collector.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/02_scripts/02a_gnina_preparation.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/02_scripts/02b_gnina_runner.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/02_scripts/02c_gnina_score_collector.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/03_configs/02a_gnina_preparation.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/03_configs/02b_gnina_runner.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/03_configs/02c_gnina_score_collector.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/dock6_runner.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/dock6_runner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/grid_generation.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/grid_generation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/score_collector.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/score_collector.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/00a_molecule_parser.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/00a_molecule_parser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/00b_receptor_preparation.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/00b_receptor_preparation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/00c_ionization_profiling.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/00c_ionization_profiling.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/00d_binding_site_definition.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/00d_binding_site_definition.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/01a_antechamber_preparation.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/01a_antechamber_preparation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m02_vina/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m02_vina/vina_preparation.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m02_vina/vina_runner.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m02_vina/vina_score_collector.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/02_scripts/01b_grid_generation.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/01b_grid_generation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/01c_dock6_run.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/01c_dock6_run.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/01d_score_collection.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/01d_score_collection.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/03_configs/01a_antechamber_preparation.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/03_configs/01a_antechamber_preparation.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/02_scripts/02a_vina_preparation.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/02_scripts/02b_vina_runner.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/02_scripts/02c_vina_score_collector.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/03_configs/02a_vina_preparation.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/03_configs/02b_vina_runner.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/03_configs/02c_vina_score_collector.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/run_pipeline.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run_pipeline.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/test_pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_pipeline.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -88,9 +96,9 @@
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking\03_configs" />
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking\02_scripts" />
+      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\01_src\molecular_docking\m02_gnina" />
+      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\01_src\molecular_docking\m02_vina" />
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking\04_data\campaigns\example_campaign\molecules" />
-      <recent name="C:\Users\benja\PycharmProjects\molecular_docking" />
-      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\01_src\molecular_docking\m00_preparation" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking\01_src\molecular_docking\m01_docking" />
@@ -146,7 +154,7 @@
       <workItem from="1773002330676" duration="24994000" />
       <workItem from="1773342055522" duration="1723000" />
       <workItem from="1773495582836" duration="17383000" />
-      <workItem from="1773668888897" duration="7969000" />
+      <workItem from="1773668888897" duration="9780000" />
     </task>
     <task id="LOCAL-00001" summary="Resolve conflicts: keep local PC version">
       <option name="closed" value="true" />
@@ -196,7 +204,15 @@
       <option name="project" value="LOCAL" />
       <updated>1773704015925</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Resolve conflicts: keep local PC version">
+      <option name="closed" value="true" />
+      <created>1773706274789</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1773706274789</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

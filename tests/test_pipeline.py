@@ -49,11 +49,11 @@ class TestScoreCollector:
 
 class TestVinaPreparation:
     def test_import(self):
-        from molecular_docking.m02_vina.vina_preparation import run_vina_preparation
+        from molecular_docking.m02_gnina.vina_preparation import run_vina_preparation
         assert callable(run_vina_preparation)
 
     def test_binding_box(self):
-        from molecular_docking.m02_vina.vina_preparation import VinaBindingBox
+        from molecular_docking.m02_gnina.vina_preparation import VinaBindingBox
         box = VinaBindingBox(center_x=10.0, center_y=20.0, center_z=30.0,
                              size_x=25.0, size_y=25.0, size_z=25.0)
         assert box.volume == 25.0 * 25.0 * 25.0
@@ -64,11 +64,11 @@ class TestVinaPreparation:
 
 class TestVinaRunner:
     def test_import(self):
-        from molecular_docking.m02_vina.vina_runner import run_vina_docking
+        from molecular_docking.m02_gnina.vina_runner import run_vina_docking
         assert callable(run_vina_docking)
 
     def test_parse_vina_output(self):
-        from molecular_docking.m02_vina.vina_runner import parse_vina_output
+        from molecular_docking.m02_gnina.vina_runner import parse_vina_output
         sample = """
 Scoring function : vina
 Detected 4 CPUs
@@ -88,5 +88,5 @@ mode |   affinity | dist from best mode
 
 class TestVinaScoreCollector:
     def test_import(self):
-        from molecular_docking.m02_vina.vina_score_collector import run_vina_score_collection
+        from molecular_docking.m02_gnina.vina_score_collector import run_vina_score_collection
         assert callable(run_vina_score_collection)

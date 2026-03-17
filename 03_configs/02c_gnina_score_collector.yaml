@@ -1,0 +1,38 @@
+# =============================================================================
+# 02c GNINA Score Collector - Configuration (molecular_docking v2.0)
+# =============================================================================
+# Recolecta, enriquece y exporta scores de GNINA a CSV + Excel.
+#
+# Rankings múltiples: Vina affinity, CNN score, CNN affinity, consenso.
+# NO incluye comparación cruzada con DOCK6 (eso es dock2profile).
+#
+# INPUT:  05_results/{campaign_id}/02b_gnina_run/gnina_results.csv
+# OUTPUT: 05_results/{campaign_id}/02c_gnina_scores/
+#
+# Project: molecular_docking
+# Module: 02c (GNINA engine)
+# Version: 1.0
+# =============================================================================
+
+parameters:
+  top_n: 10
+
+  # Criterio primario de ranking:
+  #   "cnn_affinity"  = CNN-predicted affinity (default, más informativo)
+  #   "cnn_score"     = Probabilidad de pose correcta
+  #   "vina_affinity" = Score Vina clásico
+  #   "consensus"     = Promedio de los tres rankings
+  rank_by: "cnn_affinity"
+
+  name_column: "Name"
+  export_excel: true
+  log_level: "INFO"
+
+outputs:
+  subdir: "02c_gnina_scores"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/02c_gnina_score_collector.py --config 03_configs/02c_gnina_score_collector.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+# =============================================================================

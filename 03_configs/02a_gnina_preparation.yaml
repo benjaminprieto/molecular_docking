@@ -1,0 +1,50 @@
+# =============================================================================
+# 02a GNINA Preparation - Configuration (molecular_docking v2.0)
+# =============================================================================
+# Prepara inputs para GNINA: binding box + gnina_inputs.json.
+#
+# GNINA acepta PDB + SDF/mol2 directamente — sin conversión de formato.
+# Mucho más simple que Vina (sin dependencia de PDBQT/Meeko).
+#
+# INPUT:  Receptor PDB de 00b, SDFs de 00c, metadata de 00a
+# OUTPUT: 05_results/{campaign_id}/02a_gnina_preparation/
+#
+# Project: molecular_docking
+# Module: 02a (GNINA engine)
+# Version: 1.0
+# =============================================================================
+
+parameters:
+  # Padding alrededor del ligando de referencia (Angstroms)
+  binding_box_padding: 6.0
+
+  # Autobox: si true, pasa --autobox_ligand a GNINA en 02b
+  # en vez de coordenadas explícitas
+  use_autobox: false
+
+  # Path al ligando para autobox (null = usar reference_mol2 del campaign)
+  autobox_ligand: null
+
+  # Limpiar PDB (remover aguas, HETATM)
+  clean_protein: true
+
+  # Formato de ligando preferido ("sdf" desde 00c, "mol2" desde 01a)
+  ligand_format: "sdf"
+
+  # Incluir ligando de referencia como control
+  include_reference: true
+
+  # Metadata
+  name_column: "Name"
+  smiles_column: "SMILES_mol2"
+
+  log_level: "INFO"
+
+outputs:
+  subdir: "02a_gnina_preparation"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/02a_gnina_preparation.py --config 03_configs/02a_gnina_preparation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+# =============================================================================

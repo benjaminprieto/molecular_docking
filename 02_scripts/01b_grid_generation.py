@@ -114,15 +114,15 @@ def main():
     receptor_prep_dir = Path("05_results") / campaign_id / "00b_receptor_preparation"
     binding_site_dir = Path("05_results") / campaign_id / "00d_binding_site"
 
-    # rec_noH.pdb for DMS/sphgen: prefer trimmed from 00e
+    # rec_noH.pdb for DMS/sphgen: prefer trimmed from 00d
     rec_noH_site = binding_site_dir / "rec_noH_site.pdb"
     if rec_noH_site.exists():
         rec_noH = rec_noH_site
-        logger.info(f"Using trimmed PDB from 00e: {rec_noH}")
+        logger.info(f"Using trimmed PDB from 00d: {rec_noH}")
     elif (receptor_prep_dir / "rec_noH.pdb").exists():
         rec_noH = receptor_prep_dir / "rec_noH.pdb"
-        logger.warning("Using full receptor (no 00e trimming). "
-                       "sphgen may fail on large proteins — run 00e first.")
+        logger.warning("Using full receptor (no 00d trimming). "
+                       "sphgen may fail on large proteins — run 00d first.")
     else:
         rec_noH = campaign_dir / rec_config.get("pdb", "receptor/receptor.pdb")
         logger.info(f"Using campaign receptor as noH PDB: {rec_noH}")

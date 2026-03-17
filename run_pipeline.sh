@@ -3,20 +3,20 @@
 # run_pipeline.sh — Run the complete docking pipeline
 # =============================================================================
 #
-# Architecture (v2.0 — 2026-03-16):
+# Architecture (v2.1 — 2026-03-16):
 #   00   Shared preparation (all engines)
 #   01   DOCK6 engine (01a antechamber → 01b grids → 01c dock → 01d scores)
-#   02   Vina engine  (02a PDBQT prep → 02b dock → 02c scores)
+#   02   GNINA engine (02a prep → 02b dock+CNN → 02c scores)
 #
 # Usage:
-#   bash run_pipeline.sh <campaign_id> [dock6|vina|both]
+#   bash run_pipeline.sh <campaign_id> [dock6|gnina|both]
 #
 # Examples:
 #   bash run_pipeline.sh example_campaign              # both engines
 #   bash run_pipeline.sh example_campaign dock6         # DOCK6 only
-#   bash run_pipeline.sh example_campaign vina          # Vina only
+#   bash run_pipeline.sh example_campaign gnina         # GNINA only
 #
-# Critical modules (00a, 00b, 00c, 00e) stop the pipeline on failure.
+# Critical modules (00a, 00b, 00c, 00d) stop the pipeline on failure.
 # Batch modules (01a, 01c, 02b) continue even if some molecules fail.
 #
 # =============================================================================
@@ -25,7 +25,7 @@ CAMPAIGN_ID="${1:-}"
 ENGINE="${2:-both}"
 
 if [ -z "$CAMPAIGN_ID" ]; then
-    echo "Usage: bash run_pipeline.sh <campaign_id> [dock6|vina|both]"
+    echo "Usage: bash run_pipeline.sh <campaign_id> [dock6|gnina|both]"
     echo ""
     echo "Available campaigns:"
     ls -1 04_data/campaigns/ 2>/dev/null || echo "  (none)"
@@ -84,7 +84,7 @@ if [ "$ENGINE" = "dock6" ] || [ "$ENGINE" = "both" ]; then
 
     echo "[01a] Antechamber (DOCK6-specific: SDF → mol2)"
     python 02_scripts/01a_antechamber_preparation.py --config 03_configs/01a_antechamber_preparation.yaml --campaign "$CAMPAIGN"
-    # Partial failure OK (some molecules may fail antechamber)
+    # Partial failure OK
     echo ""
 
     echo "[01b] Grid Generation"
@@ -104,26 +104,26 @@ if [ "$ENGINE" = "dock6" ] || [ "$ENGINE" = "both" ]; then
 fi
 
 # =============================================================================
-# 02 — VINA ENGINE
+# 02 — GNINA ENGINE
 # =============================================================================
 
-if [ "$ENGINE" = "vina" ] || [ "$ENGINE" = "both" ]; then
-    echo "========== 02: VINA ENGINE =========="
+if [ "$ENGINE" = "gnina" ] || [ "$ENGINE" = "both" ]; then
+    echo "========== 02: GNINA ENGINE (Vina + CNN) =========="
     echo ""
 
-    echo "[02a] Vina Preparation (PDB → PDBQT + binding box)"
-    python 02_scripts/02a_vina_preparation.py --config 03_configs/02a_vina_preparation.yaml --campaign "$CAMPAIGN"
-    if [ $? -ne 0 ]; then echo "FAILED at 02a (vina prep)"; exit 1; fi
+    echo "[02a] GNINA Preparation (binding box + inputs JSON)"
+    python 02_scripts/02a_gnina_preparation.py --config 03_configs/02a_gnina_preparation.yaml --campaign "$CAMPAIGN"
+    if [ $? -ne 0 ]; then echo "FAILED at 02a (gnina prep)"; exit 1; fi
     echo ""
 
-    echo "[02b] Vina Docking"
-    python 02_scripts/02b_vina_runner.py --config 03_configs/02b_vina_runner.yaml --campaign "$CAMPAIGN"
+    echo "[02b] GNINA Docking (Vina + CNN scoring)"
+    python 02_scripts/02b_gnina_runner.py --config 03_configs/02b_gnina_runner.yaml --campaign "$CAMPAIGN"
     # Partial failure OK
     echo ""
 
-    echo "[02c] Vina Score Collection"
-    python 02_scripts/02c_vina_score_collector.py --config 03_configs/02c_vina_score_collector.yaml --campaign "$CAMPAIGN"
-    if [ $? -ne 0 ]; then echo "FAILED at 02c (vina scores)"; exit 1; fi
+    echo "[02c] GNINA Score Collection"
+    python 02_scripts/02c_gnina_score_collector.py --config 03_configs/02c_gnina_score_collector.yaml --campaign "$CAMPAIGN"
+    if [ $? -ne 0 ]; then echo "FAILED at 02c (gnina scores)"; exit 1; fi
     echo ""
 fi
 
@@ -140,6 +140,6 @@ echo "Results in: 05_results/${CAMPAIGN_ID}/"
 if [ "$ENGINE" = "dock6" ] || [ "$ENGINE" = "both" ]; then
     echo "  DOCK6: 01d_score_collection/dock6_scores.xlsx"
 fi
-if [ "$ENGINE" = "vina" ] || [ "$ENGINE" = "both" ]; then
-    echo "  Vina:  02c_vina_scores/vina_scores.xlsx"
+if [ "$ENGINE" = "gnina" ] || [ "$ENGINE" = "both" ]; then
+    echo "  GNINA: 02c_gnina_scores/gnina_scores.xlsx"
 fi

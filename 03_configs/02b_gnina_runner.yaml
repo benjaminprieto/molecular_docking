@@ -1,0 +1,87 @@
+# =============================================================================
+# 02b GNINA Runner - Configuration (molecular_docking v2.0)
+# =============================================================================
+# Ejecuta GNINA (Vina + CNN scoring) para cada ligando.
+#
+# GNINA produce 3 scores por pose:
+#   - vina_affinity: Score empírico Vina (kcal/mol)
+#   - cnn_score: Probabilidad de pose correcta (0-1)
+#   - cnn_affinity: Afinidad predicha por CNN (kcal/mol)
+#
+# INPUT:  05_results/{campaign_id}/02a_gnina_preparation/gnina_inputs.json
+# OUTPUT: 05_results/{campaign_id}/02b_gnina_run/
+#
+# PRECONDITIONS:
+#   - Module 02a run (gnina_inputs.json)
+#   - GNINA installed (~/bin/gnina or in PATH)
+#   - GPU recommended for CNN scoring
+#
+# Project: molecular_docking
+# Module: 02b (GNINA engine)
+# Version: 1.0
+# =============================================================================
+
+parameters:
+
+  # --- GNINA Mode ---
+  # "dock"    = Full docking (find best pose + score)
+  # "rescore" = Score existing poses without moving (fast, seconds)
+  mode: "dock"
+
+  # CNN scoring mode:
+  #   "rescore"    = CNN evalúa poses finales — RECOMENDADO
+  #   "none"       = Solo Vina (sin CNN)
+  #   "refinement" = CNN guía optimización local
+  #   "all"        = CNN en todo el proceso (más lento)
+  cnn_scoring: "rescore"
+
+  # --- Autobox ---
+  # Si true, usa --autobox_ligand del gnina_inputs.json
+  use_autobox: false
+  autobox_ligand: null
+  autobox_add: 6.0
+
+  # --- Ligand Format ---
+  # "sdf"  = SDFs de 00c (default)
+  # "mol2" = mol2 de 01a (DOCK6 antechamber)
+  # "auto" = SDF primero, fallback mol2
+  ligand_format: "auto"
+
+  # --- Search Parameters ---
+  exhaustiveness: 8
+  num_modes: 9
+  seed: 42
+
+  # --- Execution ---
+  # Workers paralelos (GPU: 1-2, CPU: 4-8)
+  n_workers: 2
+  timeout: 600
+
+  # Path a GNINA (null = buscar automáticamente)
+  gnina_path: null
+
+  log_level: "INFO"
+
+outputs:
+  subdir: "02b_gnina_run"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# # Dock mode (default):
+# python 02_scripts/02b_gnina_runner.py --config 03_configs/02b_gnina_runner.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#
+# # Rescore mode (fast):
+# python 02_scripts/02b_gnina_runner.py --config 03_configs/02b_gnina_runner.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --mode rescore
+#
+# # Check GNINA:
+# python 02_scripts/02b_gnina_runner.py --check
+# =============================================================================
+
+# =============================================================================
+# OUTPUT COLUMNS (gnina_results.csv)
+# =============================================================================
+# name, success, vina_affinity, cnn_score, cnn_affinity,
+# n_poses, output_file, ligand_file, ligand_format,
+# error, runtime, binding_box_source
+# =============================================================================
