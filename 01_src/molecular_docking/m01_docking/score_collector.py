@@ -1,30 +1,36 @@
 """
-Score Collector - Core Module (02a)
+Score Collector - Core Module (01d)
 =====================================
-Parses DOCK6 scored mol2 files, extracts scores, ranks molecules,
-and produces dock2profile-compatible Excel output.
+Parses DOCK6 scored mol2 files, extracts ALL header fields, ranks molecules,
+and produces a clean CSV/Excel ready for downstream enrichment.
 
-DOCK6 scored mol2 format:
-    ##########                          Grid_Score:          -42.989223
-    ##########                     Grid_vdw_energy:          -38.889553
-    ##########                      Grid_es_energy:           -4.099671
-    ...
-    @<TRIPOS>MOLECULE
-    MOL
-    ...
+DOCK6 scored mol2 header fields (all captured):
+    ##########                                Name:                 MOL
+    ##########                    Molecular_Weight:             410.462
+    ##########                DOCK_Rotatable_Bonds:                  15
+    ##########                       Formal_Charge:                   0
+    ##########                     HBond_Acceptors:                  10
+    ##########                        HBond_Donors:                   6
+    ##########                         Heavy_Atoms:                  28
+    ##########                          Grid_Score:          -54.776524
+    ##########                     Grid_vdw_energy:          -46.697788
+    ##########                      Grid_es_energy:           -8.078735
+    ##########           Internal_energy_repulsive:           17.656584
 
 Multiple poses per file: each pose has its own ## block + MOLECULE block.
 Best pose = lowest Grid_Score (most negative = best binding).
 
+This module is DOCK6-specific. Molecular property enrichment (MW, LogP,
+QED, PAINS, etc.) belongs to the external molecular_metrics package.
+
 Location: 01_src/molecular_docking/m01_docking/score_collector.py
 Project: molecular_docking
-Module: 02a (core)
-Version: 1.0
+Module: 01d (DOCK6 engine)
+Version: 2.1 — keep_all_poses for clustering (2026-03-21)
 """
 
 import json
 import logging
-import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
@@ -32,13 +38,6 @@ from typing import Dict, List, Optional, Any, Union
 import pandas as pd
 
 logger = logging.getLogger(__name__)
-
-try:
-    from rdkit import Chem
-    from rdkit.Chem import Descriptors, Lipinski
-    RDKIT_AVAILABLE = True
-except ImportError:
-    RDKIT_AVAILABLE = False
 
 
 # =============================================================================
@@ -56,7 +55,7 @@ def parse_scored_mol2(mol2_path: str) -> List[Dict[str, Any]]:
     Returns:
         List of dicts, one per pose, each with:
           - pose_index: 0-based
-          - scores: dict of score name -> float
+          - scores: dict of score name -> value (float, int, or str)
           - n_atoms: int
           - mol2_block: full text of this pose (## lines + mol2)
     """
@@ -112,15 +111,20 @@ def parse_scored_mol2(mol2_path: str) -> List[Dict[str, Any]]:
     for idx, pose in enumerate(poses):
         scores = {}
         for line in pose["header_lines"]:
-            # Format: ##########                          Grid_Score:          -42.989223
+            # Format: ##########                    Key_Name:          value
             if ":" in line:
                 parts = line.split(":", 1)
                 key = parts[0].replace("#", "").strip()
+                raw_val = parts[1].strip()
+                # Try int first, then float, then keep as string
                 try:
-                    val = float(parts[1].strip())
-                    scores[key] = val
+                    val = int(raw_val)
                 except ValueError:
-                    scores[key] = parts[1].strip()
+                    try:
+                        val = float(raw_val)
+                    except ValueError:
+                        val = raw_val
+                scores[key] = val
 
         # Count atoms
         n_atoms = 0
@@ -135,7 +139,8 @@ def parse_scored_mol2(mol2_path: str) -> List[Dict[str, Any]]:
                 n_atoms += 1
 
         # Build full block text
-        full_block = "\n".join(pose["header_lines"]) + "\n\n" + "\n".join(pose["mol2_lines"])
+        full_block = "\n".join(pose["header_lines"]) + "\n\n" + "\n".join(
+            pose["mol2_lines"])
 
         results.append({
             "pose_index": idx,
@@ -158,7 +163,8 @@ def get_best_pose(poses: List[Dict], score_key: str = "Grid_Score") -> Optional[
     Returns:
         Best pose dict, or None if no valid scores
     """
-    valid = [p for p in poses if isinstance(p["scores"].get(score_key), (int, float))]
+    valid = [p for p in poses
+             if isinstance(p["scores"].get(score_key), (int, float))]
     if not valid:
         return None
     return min(valid, key=lambda p: p["scores"][score_key])
@@ -188,38 +194,24 @@ def extract_single_pose_mol2(scored_mol2: str, pose_index: int,
 
 
 # =============================================================================
-# MOLECULE PROPERTIES (optional, requires RDKit)
-# =============================================================================
-
-def compute_mol_properties(mol2_path: str) -> Dict[str, Any]:
-    """
-    Compute drug-likeness properties from a mol2 file using RDKit.
-
-    Returns dict with MW, LogP, HBA, HBD, TPSA, RotBonds, or empty dict if fails.
-    """
-    if not RDKIT_AVAILABLE:
-        return {}
-
-    try:
-        mol = Chem.MolFromMol2File(mol2_path, removeHs=True)
-        if mol is None:
-            return {}
-
-        return {
-            "MW": round(Descriptors.MolWt(mol), 2),
-            "LogP": round(Descriptors.MolLogP(mol), 2),
-            "HBA": Lipinski.NumHAcceptors(mol),
-            "HBD": Lipinski.NumHDonors(mol),
-            "TPSA": round(Descriptors.TPSA(mol), 2),
-            "RotBonds": Lipinski.NumRotatableBonds(mol),
-        }
-    except Exception:
-        return {}
-
-
-# =============================================================================
 # MAIN PIPELINE
 # =============================================================================
+
+# Columns from DOCK6 header that we expose explicitly.
+# Order here determines column order in output.
+_DOCK6_HEADER_COLUMNS = [
+    "Grid_Score",
+    "Grid_vdw_energy",
+    "Grid_es_energy",
+    "Internal_energy_repulsive",
+    "DOCK_Rotatable_Bonds",
+    "Formal_Charge",
+    "Heavy_Atoms",
+    "Molecular_Weight",
+    "HBond_Acceptors",
+    "HBond_Donors",
+]
+
 
 def run_score_collection(
         docking_dir: Union[str, Path],
@@ -229,7 +221,6 @@ def run_score_collection(
         max_molecules: int = 500,
         extract_best_pose_mol2: bool = True,
         keep_all_poses: bool = False,
-        compute_properties: bool = True,
         scores_filename: str = "dock6_scores.xlsx",
         mol2_dirname: str = "best_poses",
         source_label: Optional[str] = None,
@@ -238,18 +229,27 @@ def run_score_collection(
     Collect and rank DOCK6 docking scores.
 
     Scans docking_dir for {name}/{name}_scored.mol2 files.
-    Extracts best pose per molecule, ranks by Grid_Score,
-    produces Excel and optionally extracts best pose mol2 files.
+    Extracts best pose per molecule, ranks by score_key,
+    merges SMILES from unique_molecules.csv, and produces
+    Excel + CSV output ready for molecular_metrics enrichment.
+
+    When keep_all_poses=True, also produces dock6_all_poses.csv
+    with one row per pose per molecule (for clustering module 03a).
+
+    Output columns:
+        Rank, Name, Smile, Grid_Score, Grid_vdw_energy, Grid_es_energy,
+        Internal_energy_repulsive, DOCK_Rotatable_Bonds, Formal_Charge,
+        Heavy_Atoms, Molecular_Weight, HBond_Acceptors, HBond_Donors,
+        n_poses, [any extra DOCK6 header fields]
 
     Args:
         docking_dir: Path to 01c_dock6_run output
         output_dir: Path for score collection output
-        molecules_csv: Optional path to unique_molecules.csv (for metadata merge)
+        molecules_csv: Path to unique_molecules.csv (for SMILES merge)
         score_key: Score field to rank by
-        max_molecules: Top N to include in Excel (0 = all)
+        max_molecules: Top N to include (0 = all)
         extract_best_pose_mol2: Extract best pose mol2 per molecule
-        keep_all_poses: Keep all poses (not just best)
-        compute_properties: Compute RDKit properties
+        keep_all_poses: Export all poses to dock6_all_poses.csv (for clustering)
         scores_filename: Name for Excel output file
         mol2_dirname: Directory name for best pose mol2 files
         source_label: Optional label for source column
@@ -262,10 +262,11 @@ def run_score_collection(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not docking_dir.exists():
-        return {"success": False, "error": f"Docking dir not found: {docking_dir}"}
+        return {"success": False,
+                "error": f"Docking dir not found: {docking_dir}"}
 
     logger.info("=" * 60)
-    logger.info("  Score Collection (DOCK6)")
+    logger.info("  Score Collection (DOCK6) v2.0")
     logger.info("=" * 60)
     logger.info(f"  Docking dir: {docking_dir}")
     logger.info(f"  Score key:   {score_key}")
@@ -278,6 +279,7 @@ def run_score_collection(
     ])
 
     all_results = []
+    all_poses_results = []  # For keep_all_poses: one row per pose
 
     for mol_dir in mol_dirs:
         name = mol_dir.name
@@ -301,26 +303,41 @@ def run_score_collection(
 
         scores = best["scores"]
 
+        # Build result with ALL header fields
         result = {
             "Name": name,
-            "Grid_Score": scores.get("Grid_Score"),
-            "Grid_vdw_energy": scores.get("Grid_vdw_energy"),
-            "Grid_es_energy": scores.get("Grid_es_energy"),
-            "Internal_energy_repulsive": scores.get("Internal_energy_repulsive"),
             "n_poses": len(poses),
             "best_pose_index": best["pose_index"],
             "n_atoms": best["n_atoms"],
             "scored_mol2": str(scored_file),
         }
 
-        # Add any other scores from DOCK6
+        # Add every key from the DOCK6 header (numeric and string)
         for key, val in scores.items():
-            if key not in result and isinstance(val, (int, float)):
-                result[key] = val
+            if key == "Name":
+                continue  # We use directory name, not mol2 header name
+            result[key] = val
 
         all_results.append(result)
-        logger.info(f"  {name}: {score_key}={scores.get(score_key, 'N/A'):.3f} "
-                     f"({len(poses)} poses)")
+
+        # --- Collect ALL poses for clustering ---
+        if keep_all_poses:
+            for pose in poses:
+                pose_result = {
+                    "Name": name,
+                    "pose_index": pose["pose_index"],
+                    "n_atoms": pose["n_atoms"],
+                    "scored_mol2": str(scored_file),
+                }
+                for key, val in pose["scores"].items():
+                    if key == "Name":
+                        continue
+                    pose_result[key] = val
+                all_poses_results.append(pose_result)
+
+        score_val = scores.get(score_key, "N/A")
+        score_str = f"{score_val:.3f}" if isinstance(score_val, float) else str(score_val)
+        logger.info(f"  {name}: {score_key}={score_str} ({len(poses)} poses)")
 
     if not all_results:
         logger.error("No scored molecules found!")
@@ -332,38 +349,42 @@ def run_score_collection(
     df = df.sort_values(score_key, ascending=True).reset_index(drop=True)
     df.insert(0, "Rank", range(1, len(df) + 1))
 
-    # --- Merge with molecules_csv if available ---
+    # --- Merge SMILES from unique_molecules.csv ---
     if molecules_csv and Path(molecules_csv).exists():
         try:
             df_mol = pd.read_csv(molecules_csv)
-            # Try to find common column
+
+            # Normalize name column
             if "name" in df_mol.columns:
                 df_mol = df_mol.rename(columns={"name": "Name"})
+
             if "Name" in df_mol.columns:
-                merge_cols = [c for c in df_mol.columns
-                              if c not in df.columns or c == "Name"]
-                df = df.merge(df_mol[merge_cols], on="Name", how="left")
-                logger.info(f"  Merged with {molecules_csv}")
+                # Identify SMILES column
+                smiles_col = None
+                for candidate in ["SMILES", "Smile", "smiles", "Smi",
+                                  "canonical_smiles"]:
+                    if candidate in df_mol.columns:
+                        smiles_col = candidate
+                        break
+
+                if smiles_col:
+                    # Merge only SMILES (rename to Smile for consistency)
+                    merge_df = df_mol[["Name", smiles_col]].copy()
+                    merge_df = merge_df.rename(columns={smiles_col: "Smile"})
+                    df = df.merge(merge_df, on="Name", how="left")
+                    n_with_smiles = df["Smile"].notna().sum()
+                    logger.info(
+                        f"  Merged SMILES from {molecules_csv} "
+                        f"({n_with_smiles}/{len(df)} matched)")
+                else:
+                    logger.warning(
+                        f"  No SMILES column found in {molecules_csv}. "
+                        f"Available: {list(df_mol.columns)[:10]}")
+            else:
+                logger.warning(
+                    f"  No Name column found in {molecules_csv}")
         except Exception as e:
             logger.warning(f"  Could not merge molecules_csv: {e}")
-
-    # --- Compute properties ---
-    if compute_properties and RDKIT_AVAILABLE:
-        logger.info("  Computing molecular properties (RDKit)...")
-        props_list = []
-        for _, row in df.iterrows():
-            scored_file = row.get("scored_mol2", "")
-            if scored_file and Path(scored_file).exists():
-                props = compute_mol_properties(scored_file)
-            else:
-                props = {}
-            props_list.append(props)
-
-        if props_list:
-            df_props = pd.DataFrame(props_list)
-            for col in df_props.columns:
-                if col not in df.columns:
-                    df[col] = df_props[col]
 
     # --- Apply max_molecules limit ---
     if max_molecules > 0 and len(df) > max_molecules:
@@ -388,30 +409,70 @@ def run_score_collection(
 
             if scored_file and Path(scored_file).exists():
                 out_mol2 = mol2_output_dir / f"{name}.mol2"
-                if extract_single_pose_mol2(scored_file, int(pose_idx), str(out_mol2)):
+                if extract_single_pose_mol2(scored_file, int(pose_idx),
+                                             str(out_mol2)):
                     n_extracted += 1
 
-        logger.info(f"  Extracted {n_extracted} best pose mol2 → {mol2_output_dir}/")
+        logger.info(
+            f"  Extracted {n_extracted} best pose mol2 → {mol2_output_dir}/")
 
-    # --- Clean up internal columns before saving ---
-    export_df = df.drop(columns=["scored_mol2", "best_pose_index"], errors="ignore")
+    # --- Organize columns for export ---
+    export_df = df.drop(
+        columns=["scored_mol2", "best_pose_index"], errors="ignore")
+
+    # Desired column order: Rank, Name, Smile, DOCK6 scores, metadata
+    ordered_cols = ["Rank", "Name"]
+
+    # Smile right after Name (if available)
+    if "Smile" in export_df.columns:
+        ordered_cols.append("Smile")
+
+    # DOCK6 header columns in canonical order
+    for col in _DOCK6_HEADER_COLUMNS:
+        if col in export_df.columns and col not in ordered_cols:
+            ordered_cols.append(col)
+
+    # n_poses and any remaining columns
+    remaining = [c for c in export_df.columns if c not in ordered_cols]
+    ordered_cols.extend(remaining)
+
+    export_df = export_df[ordered_cols]
 
     # --- Save Excel ---
     xlsx_path = output_dir / scores_filename
     export_df.to_excel(str(xlsx_path), index=False, sheet_name="DOCK6_Scores")
     logger.info(f"  Saved: {xlsx_path}")
 
-    # --- Save CSV (always, for programmatic access) ---
+    # --- Save CSV (always, for programmatic / molecular_metrics input) ---
     csv_path = output_dir / "dock6_scores.csv"
     export_df.to_csv(str(csv_path), index=False)
     logger.info(f"  Saved: {csv_path}")
+
+    # --- Save all-poses CSV (for clustering module 03a) ---
+    all_poses_csv = None
+    if keep_all_poses and all_poses_results:
+        df_all = pd.DataFrame(all_poses_results)
+        df_all = df_all.sort_values(
+            ["Name", score_key], ascending=[True, True]
+        ).reset_index(drop=True)
+
+        all_poses_csv = output_dir / "dock6_all_poses.csv"
+        df_all.to_csv(str(all_poses_csv), index=False)
+
+        n_molecules = df_all["Name"].nunique()
+        n_total_poses = len(df_all)
+        logger.info(
+            f"  Saved: {all_poses_csv} "
+            f"({n_total_poses} poses from {n_molecules} molecules)")
+    elif keep_all_poses:
+        logger.warning("  keep_all_poses=True but no poses collected")
 
     # --- Save summary TXT ---
     summary_path = output_dir / "score_collection_summary.txt"
     w = 70
     lines = [
         "=" * w,
-        "02a SCORE COLLECTION - SUMMARY (DOCK6)",
+        "01d SCORE COLLECTION - SUMMARY (DOCK6) v2.0",
         "=" * w,
         "",
         f"Date:              {datetime.now().strftime('%Y-%m-%d %H:%M')}",
@@ -424,17 +485,24 @@ def run_score_collection(
         f"Mean score:        {df[score_key].mean():.3f}",
         f"Median score:      {df[score_key].median():.3f}",
         "",
+        "Columns exported:",
+        f"  {', '.join(ordered_cols)}",
+        "",
         "-" * w,
-        f"{'Rank':<6} {'Name':<30} {score_key:>12} {'vdW':>10} {'ES':>10} {'Poses':>6}",
+        f"{'Rank':<6} {'Name':<30} {score_key:>12} {'vdW':>10} "
+        f"{'ES':>10} {'FC':>4} {'DRB':>4} {'HA':>4} {'Poses':>6}",
         "-" * w,
     ]
 
-    for _, row in df.iterrows():
+    for _, row in export_df.iterrows():
         lines.append(
             f"{int(row['Rank']):<6} {row['Name']:<30} "
             f"{row.get('Grid_Score', 0):>12.3f} "
             f"{row.get('Grid_vdw_energy', 0):>10.3f} "
             f"{row.get('Grid_es_energy', 0):>10.3f} "
+            f"{row.get('Formal_Charge', ''):>4} "
+            f"{row.get('DOCK_Rotatable_Bonds', ''):>4} "
+            f"{row.get('Heavy_Atoms', ''):>4} "
             f"{row.get('n_poses', 0):>6}"
         )
 
@@ -447,6 +515,7 @@ def run_score_collection(
     # --- Save report JSON ---
     report = {
         "timestamp": datetime.now().isoformat(),
+        "version": "2.0",
         "docking_dir": str(docking_dir),
         "score_key": score_key,
         "n_scored": len(df),
@@ -455,8 +524,10 @@ def run_score_collection(
         "worst_score": float(df[score_key].max()),
         "mean_score": float(df[score_key].mean()),
         "median_score": float(df[score_key].median()),
+        "columns": ordered_cols,
         "output_xlsx": str(xlsx_path),
         "output_csv": str(csv_path),
+        "all_poses_csv": str(all_poses_csv) if all_poses_csv else None,
         "mol2_dir": str(mol2_output_dir) if mol2_output_dir else None,
     }
 
@@ -467,7 +538,9 @@ def run_score_collection(
     logger.info("")
     logger.info("=" * 60)
     logger.info(f"  {len(df)} molecules scored and ranked")
-    logger.info(f"  Best: {df.iloc[0]['Name']} ({score_key}={df[score_key].min():.3f})")
+    logger.info(
+        f"  Best: {df.iloc[0]['Name']} "
+        f"({score_key}={df[score_key].min():.3f})")
     logger.info("=" * 60)
 
     return {
@@ -478,6 +551,7 @@ def run_score_collection(
         "best_score": float(df[score_key].min()),
         "output_xlsx": str(xlsx_path),
         "output_csv": str(csv_path),
+        "all_poses_csv": str(all_poses_csv) if all_poses_csv else None,
         "summary_txt": str(summary_path),
         "report_json": str(report_path),
         "mol2_dir": str(mol2_output_dir) if mol2_output_dir else None,

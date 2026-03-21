@@ -11,7 +11,12 @@
 #
 # Project: molecular_docking
 # Module: 02c (GNINA engine)
-# Version: 1.0
+# Version: 1.1 — keep_all_poses for clustering (2026-03-21)
+#
+# CHANGES v1.0 → v1.1:
+#   - keep_all_poses: NEW (default true) — reads output SDF files from 02b,
+#     extracts scores for ALL poses, exports gnina_all_poses.csv for
+#     clustering module 03a
 # =============================================================================
 
 parameters:
@@ -24,6 +29,10 @@ parameters:
   #   "consensus"     = Promedio de los tres rankings
   rank_by: "cnn_affinity"
 
+  # Export ALL poses per molecule to gnina_all_poses.csv
+  # Required for clustering module (03a)
+  keep_all_poses: true
+
   name_column: "Name"
   export_excel: true
   log_level: "INFO"
@@ -34,5 +43,12 @@ outputs:
 # =============================================================================
 # USAGE
 # =============================================================================
-# python 02_scripts/02c_gnina_score_collector.py --config 03_configs/02c_gnina_score_collector.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+# python 02_scripts/02c_gnina_score_collector.py \
+#     --config 03_configs/02c_gnina_score_collector.yaml \
+#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#
+# OUTPUT FILES:
+#   gnina_scores.csv       — 1 row per molecule (best pose), ranked
+#   gnina_scores.xlsx      — Same, Excel format
+#   gnina_all_poses.csv    — 1 row per pose (~100 per molecule), for clustering
 # =============================================================================

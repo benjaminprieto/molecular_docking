@@ -2,26 +2,32 @@
 # 01a Antechamber Preparation - Configuration (DOCK6 engine)
 # =============================================================================
 # Converts protonated SDF files to DOCK6-ready mol2 via antechamber.
-# DOCK6-specific — Vina does not need mol2 files.
+# DOCK6-specific — Vina/GNINA do not need mol2 files.
+#
+# CRITICAL: atom_type MUST be "sybyl" for DOCK6 flex docking.
+# DOCK6's flex.defn identifies rotatable bonds by SYBYL atom types
+# (C.3, N.am, O.2, etc.). GAFF/GAFF2 types (c3, n, oh, etc.) are
+# NOT recognized, causing DOCK6 to silently fall back to rigid docking
+# with no conformational search (anchor-and-grow disabled).
 #
 # INPUT:  05_results/{campaign_id}/00c_ionization_profiling/.../structures/pH{xx}/
 # OUTPUT: 05_results/{campaign_id}/01a_antechamber/mol2/
 #
-# Renumbered from 00d (2026-03-16) — antechamber is DOCK6-specific.
-#
 # Project: molecular_docking
 # Module: 01a (DOCK6)
-# Version: 1.2
+# Version: 1.3 — SYBYL atom types for DOCK6 flex (2026-03-20)
 # =============================================================================
 
 parameters:
   # Charge method: "bcc" (AM1-BCC, recommended) or "gas" (Gasteiger, fast)
   charge_method: "bcc"
 
-  # Atom type: "gaff2" (recommended) or "gaff"
-  atom_type: "gaff2"
+  # Atom type: "sybyl" (REQUIRED for DOCK6 flex docking)
+  # DO NOT use "gaff2" or "gaff" — DOCK6 will silently dock rigid.
+  atom_type: "sybyl"
 
   # Fall back to obabel if antechamber fails
+  # (obabel natively produces SYBYL types, so fallback is safe)
   obabel_fallback: true
 
   # Timeout per molecule (seconds)

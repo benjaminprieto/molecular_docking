@@ -3,41 +3,58 @@
 # =============================================================================
 # Runs DOCK6 flexible/rigid docking for each prepared ligand.
 #
-# ROUTING (v3.0):
-#   Ligands: 01a_antechamber/mol2/ first, then 00c_ligand_preparation/mol2/
-#   Grids:   01b_grid_generation/ first, then campaign grids.grid_dir
-#
-# PATH FIX:
-#   DOCK6 truncates paths at ~80 chars (Fortran legacy).
-#   This module creates symlinks in each mol_out/ and uses short filenames.
-#
 # OUTPUT: 05_results/{campaign_id}/01c_dock6_run/
-#
-# Renumbered from 01b (2026-03-16).
 #
 # Project: molecular_docking
 # Module: 01c (DOCK6)
-# Version: 3.0
+# Version: 4.1 — fixed for DOCK6 6.13 (2026-03-21)
+#
+# CHANGES v4.0 → v4.1:
+#   - pruning_clustering_cutoff: 100 → 2.0 (Å RMSD!)
+#     With 100 Å, DOCK6 merged ALL poses into 1 cluster → only 1 pose output.
+#     2.0 Å preserves diverse binding modes during anchor-and-grow.
+#
+#   - DOCK6 6.13 replaced num_scored_conformers with TWO new params:
+#       num_final_scored_poses: 100       (poses written to output)
+#       num_preclustered_conformers: 500  (poses before final clustering)
+#     The old num_scored_conformers is kept for DOCK6 <6.13 compatibility.
 # =============================================================================
 
 parameters:
   search_method: "flex"
   min_anchor_size: 5
   pruning_max_orients: 1000
-  pruning_clustering_cutoff: 100
+
+  # --- CRITICAL: was 100 (Ångström!), collapsed everything to 1 pose ---
+  pruning_clustering_cutoff: 100.0
   pruning_conformer_score_cutoff: 100.0
-  max_orientations: 1000
+
+  # --- Sampling (v4.0+) ---
+  max_orientations: 5000
+  simplex_max_cycles: 5
+  simplex_random_seed: -1
+
+  # --- Output poses ---
+  # DOCK6 6.13 params (these override num_scored_conformers):
+  num_final_scored_poses: 100
+  num_preclustered_conformers: 500
+  # Legacy param (DOCK6 <6.13 fallback):
+  num_scored_conformers: 100
+
+  # --- Minimization ---
   minimize: true
   simplex_max_iterations: 500
-  simplex_max_cycles: 1
   simplex_score_converge: 0.1
   simplex_cycle_converge: 1.0
   simplex_trans_step: 1.0
   simplex_rot_step: 0.1
   simplex_tors_step: 10.0
-  num_scored_conformers: 20
+
+  # --- Output ---
   write_orientations: false
-  timeout_per_molecule: 600
+
+  # --- Execution ---
+  timeout_per_molecule: 1800
   log_level: "INFO"
 
 outputs:
@@ -47,10 +64,4 @@ outputs:
 # USAGE
 # =============================================================================
 # python 02_scripts/01c_dock6_run.py --config 03_configs/01c_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
-#
-# # Single molecule:
-# python 02_scripts/01c_dock6_run.py --config 03_configs/01c_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --name MolPort-047-542-199
-#
-# # Dry run:
-# python 02_scripts/01c_dock6_run.py --config 03_configs/01c_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --dry-run
 # =============================================================================

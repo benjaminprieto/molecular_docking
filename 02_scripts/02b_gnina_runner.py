@@ -10,7 +10,7 @@ Hardcoded upstream paths:
 
 Project: molecular_docking
 Module: 02b (GNINA engine)
-Version: 1.0
+Version: 1.1 — added --name filter (2026-03-21)
 """
 
 import argparse
@@ -59,6 +59,8 @@ def main():
     parser.add_argument('--seed', type=int, default=None)
     parser.add_argument('--n-workers', type=int, default=None)
     parser.add_argument('--gnina-path', type=str, default=None)
+    parser.add_argument('--name', type=str, default=None,
+                        help='Dock only this molecule (filter by name)')
     parser.add_argument('--log-level', type=str, default=None)
     parser.add_argument('--verbose', '-v', action='store_true')
     parser.add_argument('--check', action='store_true')
@@ -145,6 +147,26 @@ def main():
     if not gnina:
         logger.error("GNINA not found! Install or specify --gnina-path")
         return 1
+
+    # --- Filter by --name if specified ---
+    if args.name:
+        import json
+        with open(inputs_json) as f:
+            data = json.load(f)
+        molecules = data.get('molecules', data if isinstance(data, list) else [])
+        filtered = [m for m in molecules if m.get('name') == args.name]
+        if not filtered:
+            logger.error(f"Molecule '{args.name}' not found in {inputs_json}")
+            available = [m.get('name', '?') for m in molecules[:10]]
+            logger.error(f"  Available (first 10): {available}")
+            return 1
+        data['molecules'] = filtered
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        filtered_json = str(Path(output_dir) / "gnina_inputs_filtered.json")
+        with open(filtered_json, 'w') as f:
+            json.dump(data, f, indent=2)
+        inputs_json = filtered_json
+        logger.info(f"Filtering: only docking '{args.name}'")
 
     log_path = Path(output_dir) / '02b_gnina_run.log'
     setup_log_file(log_path, log_level)

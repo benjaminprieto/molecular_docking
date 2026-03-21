@@ -71,6 +71,7 @@ def main():
     top_n = 10
     rank_by = "cnn_affinity"
     export_excel = True
+    keep_all_poses = False
     name_column = "Name"
     log_level = "INFO"
 
@@ -92,6 +93,7 @@ def main():
         top_n = params.get("top_n", top_n)
         rank_by = params.get("rank_by", rank_by)
         export_excel = params.get("export_excel", export_excel)
+        keep_all_poses = params.get("keep_all_poses", False)
         name_column = params.get("name_column", name_column)
         log_level = params.get("log_level", log_level)
         subdir = mc.get("outputs", {}).get("subdir", "02c_gnina_scores")
@@ -130,6 +132,7 @@ def main():
             top_n=top_n,
             rank_by=rank_by,
             export_excel=export_excel,
+            keep_all_poses=keep_all_poses,
         )
 
         if not result.get("success"):

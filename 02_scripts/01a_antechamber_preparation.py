@@ -7,7 +7,7 @@ Converts protonated SDF files from 00c into DOCK6-ready mol2 files via antechamb
 This module is DOCK6-specific — Vina does not need mol2 files.
 
 Input: Individual SDF files from 00c (structures/pH{value}/*.sdf)
-Output: mol2/*.mol2 (AM1-BCC charges, GAFF2 atom types)
+Output: mol2/*.mol2 (AM1-BCC charges, SYBYL atom types)
 
 Reads campaign_config.yaml:
     - docking_ph          -> selects pH folder from 00c
@@ -24,7 +24,7 @@ Usage:
 
 Project: molecular_docking
 Module: 01a (DOCK6 engine)
-Version: 1.2 — renumbered from 00d (2026-03-16)
+Version: 1.3 — SYBYL atom types for DOCK6 flex compatibility (2026-03-20)
 """
 
 import argparse
@@ -110,7 +110,8 @@ def main():
     parser.add_argument("--charge-method", type=str, default=None,
                         choices=["bcc", "gas"])
     parser.add_argument("--atom-type", type=str, default=None,
-                        choices=["gaff2", "gaff"])
+                        choices=["sybyl", "gaff2", "gaff"],
+                        help="Atom type for mol2 output. 'sybyl' required for DOCK6 flex docking.")
     parser.add_argument("--timeout", type=int, default=None,
                         help="Timeout per molecule (seconds)")
     parser.add_argument("--no-fallback", action="store_true",
@@ -125,7 +126,7 @@ def main():
     campaign_id = "direct"
     docking_ph = 7.2
     charge_method = "bcc"
-    atom_type = "gaff2"
+    atom_type = "sybyl"
     obabel_fallback = True
     timeout_per_molecule = 300
     log_level = "INFO"
@@ -142,7 +143,6 @@ def main():
             structures = latest_run / "structures"
             if structures.exists():
                 sdf_dir = str(_find_ph_folder(structures, docking_ph))
-
 
         output_dir = str(Path("05_results") / campaign_id / "01a_antechamber")
 
@@ -189,7 +189,6 @@ def main():
     if log_level:
         logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
-
     log_path = Path(output_dir) / "01a_antechamber.log"
     setup_log_file(log_path, log_level)
 
@@ -201,6 +200,15 @@ def main():
     logger.info(f"Output:       {output_dir}")
     logger.info(f"Charges:      {charge_method} ({atom_type})")
     logger.info(f"Timeout:      {timeout_per_molecule}s per molecule")
+
+    # Warn if using non-SYBYL atom types with DOCK6
+    if atom_type != "sybyl":
+        logger.warning("=" * 60)
+        logger.warning(f"  WARNING: atom_type='{atom_type}' — DOCK6 flex docking")
+        logger.warning(f"  requires SYBYL atom types for anchor-and-grow.")
+        logger.warning(f"  GAFF/GAFF2 types will force rigid docking (no conformational search).")
+        logger.warning(f"  Recommended: atom_type='sybyl'")
+        logger.warning("=" * 60)
 
     result = run_antechamber_preparation(
         sdf_dir=sdf_dir,

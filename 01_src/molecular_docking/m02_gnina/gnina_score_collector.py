@@ -15,11 +15,12 @@ Location: 01_src/molecular_docking/m02_gnina/gnina_score_collector.py
 
 Project: molecular_docking
 Module: 02c (core)
-Version: 1.0
+Version: 1.1 — keep_all_poses for clustering (2026-03-21)
 """
 
 import logging
 import json
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
 
@@ -33,6 +34,70 @@ try:
     OPENPYXL_AVAILABLE = True
 except ImportError:
     OPENPYXL_AVAILABLE = False
+
+
+# =============================================================================
+# ALL-POSES EXTRACTION FROM GNINA OUTPUT SDF FILES
+# =============================================================================
+
+def parse_gnina_sdf_all_poses(sdf_path: str, name: str) -> List[Dict[str, Any]]:
+    """
+    Parse a GNINA output SDF file and extract scores for ALL poses.
+
+    GNINA writes per-pose properties:
+      - minimizedAffinity  → vina_affinity
+      - CNNscore           → cnn_score
+      - CNNaffinity        → cnn_affinity
+      - CNN_VS             → cnn_vs (optional)
+
+    Args:
+        sdf_path: Path to {name}_gnina.sdf
+        name: Molecule name
+
+    Returns:
+        List of dicts, one per pose
+    """
+    path = Path(sdf_path)
+    if not path.exists() or path.stat().st_size == 0:
+        return []
+
+    content = path.read_text()
+    blocks = content.split("$$$$")
+    poses = []
+
+    for idx, block in enumerate(blocks):
+        block = block.strip()
+        if not block:
+            continue
+
+        pose = {"Name": name, "pose_index": idx}
+
+        # Extract properties using regex
+        m = re.search(r"<minimizedAffinity>\s*\n\s*([-\d.]+)", block)
+        if m:
+            pose["vina_affinity"] = float(m.group(1))
+
+        m = re.search(r"<CNNscore>\s*\n\s*([\d.]+)", block)
+        if m:
+            pose["cnn_score"] = float(m.group(1))
+
+        m = re.search(r"<CNNaffinity>\s*\n\s*([\d.]+)", block)
+        if m:
+            pose["cnn_affinity"] = float(m.group(1))
+
+        m = re.search(r"<CNN_VS>\s*\n\s*([\d.]+)", block)
+        if m:
+            pose["cnn_vs"] = float(m.group(1))
+
+        m = re.search(r"<CNNaffinity_variance>\s*\n\s*([\d.]+)", block)
+        if m:
+            pose["cnn_affinity_variance"] = float(m.group(1))
+
+        # Only include if we got at least one score
+        if any(k in pose for k in ("vina_affinity", "cnn_score", "cnn_affinity")):
+            poses.append(pose)
+
+    return poses
 
 
 # =============================================================================
@@ -65,6 +130,8 @@ def enrich_and_rank(
 
     # Merge with metadata
     if meta_df is not None and name_column in meta_df.columns:
+        df['name'] = df['name'].astype(str)
+        meta_df[name_column] = meta_df[name_column].astype(str)
         merge_cols = [c for c in meta_df.columns if c not in df.columns or c == name_column]
         df = df.merge(meta_df[merge_cols], left_on='name', right_on=name_column, how='left')
         if name_column != 'name' and name_column in df.columns:
@@ -281,10 +348,16 @@ def run_gnina_score_collection(
         top_n: int = 10,
         rank_by: str = "cnn_affinity",
         export_excel: bool = True,
+        keep_all_poses: bool = False,
 ) -> Dict[str, Any]:
-    """Run the complete GNINA score collection pipeline."""
+    """Run the complete GNINA score collection pipeline.
+
+    When keep_all_poses=True, scans the poses directory for output SDF files,
+    extracts scores for every pose, and exports gnina_all_poses.csv
+    (one row per pose per molecule) for clustering module 03a.
+    """
     logger.info("=" * 60)
-    logger.info("GNINA SCORE COLLECTION (02c) v1.0")
+    logger.info("GNINA SCORE COLLECTION (02c) v1.1")
     logger.info("=" * 60)
 
     output_path = Path(output_dir)
@@ -305,6 +378,43 @@ def run_gnina_score_collection(
     scores_csv = output_path / "gnina_scores.csv"
     enriched.to_csv(scores_csv, index=False)
     logger.info(f"  Saved CSV: {scores_csv}")
+
+    # --- Extract all poses from SDF files (for clustering) ---
+    all_poses_csv = None
+    if keep_all_poses:
+        # Find poses directory: sibling of gnina_results.csv
+        results_parent = Path(gnina_results_csv).parent
+        poses_dir = results_parent / "poses"
+
+        if poses_dir.exists():
+            all_poses = []
+            sdf_files = sorted(poses_dir.glob("*_gnina.sdf"))
+            logger.info(f"  Scanning {len(sdf_files)} SDF files for all poses...")
+
+            for sdf_file in sdf_files:
+                mol_name = sdf_file.stem.replace("_gnina", "")
+                poses = parse_gnina_sdf_all_poses(str(sdf_file), mol_name)
+                all_poses.extend(poses)
+
+            if all_poses:
+                df_all = pd.DataFrame(all_poses)
+                df_all = df_all.sort_values(
+                    ["Name", "vina_affinity"], ascending=[True, True],
+                    na_position="last",
+                ).reset_index(drop=True)
+
+                all_poses_csv = output_path / "gnina_all_poses.csv"
+                df_all.to_csv(str(all_poses_csv), index=False)
+
+                n_molecules = df_all["Name"].nunique()
+                n_total = len(df_all)
+                logger.info(
+                    f"  Saved: {all_poses_csv} "
+                    f"({n_total} poses from {n_molecules} molecules)")
+            else:
+                logger.warning("  keep_all_poses=True but no poses found in SDF files")
+        else:
+            logger.warning(f"  Poses dir not found: {poses_dir}")
 
     # Excel
     scores_xlsx = None
@@ -343,6 +453,7 @@ def run_gnina_score_collection(
         "scores_csv": str(scores_csv),
         "scores_xlsx": str(scores_xlsx) if scores_xlsx else None,
         "scores_json": str(scores_json),
+        "all_poses_csv": str(all_poses_csv) if all_poses_csv else None,
         "summary_txt": str(summary_file),
         "dataframe": enriched,
     }

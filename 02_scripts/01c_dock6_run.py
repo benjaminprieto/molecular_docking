@@ -24,7 +24,7 @@ Ligand routing (v3.0):
 Output: 05_results/{campaign_id}/01c_dock6_run/
 
 Usage:
-    python 02_scripts/01c_dock6_run.py --config 03_configs/01c_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+    python 02_scripts/01c_dock6_run.py --config 03_configs/01c_dock6_run.yaml --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
 
 Project: molecular_docking
 Module: 01c (DOCK6 engine) — renumbered from 01b (2026-03-16)
@@ -145,6 +145,8 @@ def main():
                 "pruning_conformer_score_cutoff", "simplex_max_cycles",
                 "simplex_score_converge", "simplex_cycle_converge",
                 "simplex_trans_step", "simplex_rot_step", "simplex_tors_step",
+                "simplex_random_seed",
+                "num_final_scored_poses", "num_preclustered_conformers",
                 "write_orientations"]:
         if key in params:
             extra_params[key] = params[key]

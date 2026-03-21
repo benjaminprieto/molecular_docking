@@ -1,19 +1,24 @@
 """
-Antechamber Preparation - Core Module (00d)
+Antechamber Preparation - Core Module (01a)
 =============================================
 Converts protonated SDF files into DOCK6-ready mol2 files.
 
 Takes individual SDF files from 00c (ionization profiling) and runs
-antechamber to assign AM1-BCC charges and GAFF2 atom types.
+antechamber to assign AM1-BCC charges and SYBYL atom types.
+
+CRITICAL: DOCK6 flex docking (anchor-and-grow) requires SYBYL atom types
+(e.g. C.3, O.3, N.am, C.ar) in the ligand mol2. GAFF/GAFF2 types
+(e.g. c3, oh, os, n, ca) are NOT recognized by flex.defn, causing DOCK6
+to silently fall back to rigid docking with no conformational search.
 
 Pipeline per molecule:
-    SDF (3D + protonated) → antechamber → mol2 (AM1-BCC, GAFF2)
-    If antechamber fails → obabel fallback (Gasteiger charges)
+    SDF (3D + protonated) → antechamber (-at sybyl) → mol2 (AM1-BCC, SYBYL)
+    If antechamber fails → obabel fallback (Gasteiger charges, SYBYL types)
 
-Location: 01_src/molecular_docking/m00_preparation/antechamber_preparation.py
+Location: 01_src/molecular_docking/m01_docking/antechamber_preparation.py
 Project: molecular_docking
-Module: 00d (core)
-Version: 1.0
+Module: 01a (core)
+Version: 2.0 — SYBYL atom types for DOCK6 flex compatibility (2026-03-20)
 """
 
 import logging
@@ -35,6 +40,18 @@ try:
 except ImportError:
     RDKIT_AVAILABLE = False
 
+# DOCK6-compatible SYBYL atom types (for reference/validation)
+SYBYL_ATOM_TYPES = {
+    "C.3", "C.2", "C.1", "C.ar", "C.cat",
+    "N.3", "N.2", "N.1", "N.ar", "N.am", "N.pl3", "N.4",
+    "O.3", "O.2", "O.co2", "O.spc", "O.t3p",
+    "S.3", "S.2", "S.O", "S.O2",
+    "P.3",
+    "H", "H.spc", "H.t3p",
+    "F", "Cl", "Br", "I",
+    "LP", "Du", "Du.C", "Any", "Hal", "Het", "Hev",
+}
+
 
 # =============================================================================
 # ANTECHAMBER
@@ -44,7 +61,7 @@ def run_antechamber(
         input_sdf: Union[str, Path],
         output_mol2: Union[str, Path],
         charge_method: str = "bcc",
-        atom_type: str = "gaff2",
+        atom_type: str = "sybyl",
         net_charge: int = 0,
         timeout: int = 300,
 ) -> bool:
@@ -55,7 +72,7 @@ def run_antechamber(
         input_sdf: Path to input SDF (must have 3D coords)
         output_mol2: Path for output mol2
         charge_method: "bcc" (AM1-BCC) or "gas" (Gasteiger)
-        atom_type: "gaff2" or "gaff"
+        atom_type: "sybyl" (required for DOCK6 flex), "gaff2", or "gaff"
         net_charge: Net formal charge of the molecule
         timeout: Max seconds for antechamber
 
@@ -128,6 +145,9 @@ def mol2_from_obabel(
 ) -> bool:
     """
     Fallback: convert SDF -> mol2 using OpenBabel with Gasteiger charges.
+
+    OpenBabel natively produces SYBYL atom types in mol2 output,
+    so the result is compatible with DOCK6 flex docking.
     """
     try:
         output_mol2 = Path(output_mol2)
@@ -156,14 +176,18 @@ def mol2_from_obabel(
 def validate_mol2(mol2_path: Union[str, Path]) -> Dict[str, Any]:
     """
     Validate a mol2 file for DOCK6 compatibility.
+
+    Checks: existence, ATOM/BOND sections, charges, and atom type format.
     """
     result = {
         "exists": False,
         "has_atoms": False,
         "has_bonds": False,
         "has_charges": False,
+        "has_sybyl_types": False,
         "n_atoms": 0,
         "n_bonds": 0,
+        "atom_type_sample": None,
         "valid": False,
     }
 
@@ -179,6 +203,7 @@ def validate_mol2(mol2_path: Union[str, Path]) -> Dict[str, Any]:
     if result["has_atoms"]:
         in_atom = False
         charges = []
+        atom_types = []
         for line in text.split("\n"):
             if "@<TRIPOS>ATOM" in line:
                 in_atom = True
@@ -187,6 +212,8 @@ def validate_mol2(mol2_path: Union[str, Path]) -> Dict[str, Any]:
                 break
             if in_atom and line.strip():
                 parts = line.split()
+                if len(parts) >= 6:
+                    atom_types.append(parts[5])  # Column 6 = atom type
                 if len(parts) >= 9:
                     try:
                         charges.append(float(parts[8]))
@@ -198,6 +225,12 @@ def validate_mol2(mol2_path: Union[str, Path]) -> Dict[str, Any]:
             len(charges) > 0
             and not all(abs(c) < 1e-10 for c in charges)
         )
+
+        # Check if atom types are SYBYL format (contain dots: C.3, N.am, O.2)
+        if atom_types:
+            result["atom_type_sample"] = atom_types[0]
+            n_sybyl = sum(1 for at in atom_types if "." in at or at in ("H", "F", "Cl", "Br", "I", "P", "S"))
+            result["has_sybyl_types"] = n_sybyl > len(atom_types) * 0.5
 
     if result["has_bonds"]:
         in_bond = False
@@ -274,7 +307,7 @@ def run_antechamber_preparation(
         sdf_dir: Union[str, Path],
         output_dir: Union[str, Path],
         charge_method: str = "bcc",
-        atom_type: str = "gaff2",
+        atom_type: str = "sybyl",
         obabel_fallback: bool = True,
         timeout_per_molecule: int = 300,
 ) -> Dict[str, Any]:
@@ -285,7 +318,7 @@ def run_antechamber_preparation(
         sdf_dir:              Directory with individual SDF files (from 00c).
         output_dir:           Directory for output mol2 files.
         charge_method:        "bcc" (AM1-BCC) or "gas" (Gasteiger).
-        atom_type:            "gaff2" or "gaff".
+        atom_type:            "sybyl" (required for DOCK6 flex), "gaff2", or "gaff".
         obabel_fallback:      Try obabel if antechamber fails.
         timeout_per_molecule: Max seconds per molecule for antechamber.
 
@@ -319,8 +352,19 @@ def run_antechamber_preparation(
     logger.info(f"  Timeout:    {timeout_per_molecule}s per molecule")
     logger.info(f"  Fallback:   {'obabel' if obabel_fallback else 'none'}")
 
+    # Warn about non-SYBYL types
+    if atom_type != "sybyl":
+        logger.warning("")
+        logger.warning("  *** WARNING: atom_type='%s' is NOT recommended for DOCK6 ***", atom_type)
+        logger.warning("  DOCK6 flex docking requires SYBYL atom types (C.3, N.am, O.2, etc.)")
+        logger.warning("  GAFF/GAFF2 types cause silent fallback to rigid docking.")
+        logger.warning("  Set atom_type='sybyl' in config or use --atom-type sybyl")
+        logger.warning("")
+
     results = []
     n_total = len(sdf_files)
+    n_sybyl_ok = 0
+    n_sybyl_fail = 0
 
     for idx, sdf_path in enumerate(sdf_files):
         name = sdf_path.stem
@@ -352,6 +396,17 @@ def run_antechamber_preparation(
         # Validate
         if success:
             validation = validate_mol2(mol2_path)
+
+            # Track SYBYL type compliance
+            if validation.get("has_sybyl_types"):
+                n_sybyl_ok += 1
+            else:
+                n_sybyl_fail += 1
+                if validation.get("atom_type_sample"):
+                    logger.warning(f"    Non-SYBYL atom types detected "
+                                   f"(sample: {validation['atom_type_sample']}). "
+                                   f"DOCK6 flex docking may not work correctly.")
+
             res = {
                 "Name": name,
                 "status": "OK" if validation["valid"] else "INVALID",
@@ -359,15 +414,18 @@ def run_antechamber_preparation(
                 "net_charge": net_charge,
                 "mol2_valid": validation["valid"],
                 "mol2_n_atoms": validation["n_atoms"],
+                "has_sybyl_types": validation.get("has_sybyl_types", False),
+                "atom_type_sample": validation.get("atom_type_sample"),
                 "mol2_path": str(mol2_path) if validation["valid"] else None,
                 "sdf_path": str(sdf_path),
                 "error": None if validation["valid"] else "mol2 validation failed",
             }
             if validation["valid"]:
+                sybyl_tag = "SYBYL" if validation.get("has_sybyl_types") else "non-SYBYL"
                 logger.info(f"    -> OK ({method}, "
-                            f"{validation['n_atoms']} atoms, Q={net_charge})")
+                            f"{validation['n_atoms']} atoms, Q={net_charge}, {sybyl_tag})")
             else:
-                # Remove invalid mol2 so 01b doesn't pick it up
+                # Remove invalid mol2 so 01c doesn't pick it up
                 if mol2_path.exists():
                     mol2_path.unlink()
                     logger.debug(f"    Removed invalid mol2: {mol2_path.name}")
@@ -385,6 +443,8 @@ def run_antechamber_preparation(
                 "net_charge": net_charge,
                 "mol2_valid": False,
                 "mol2_n_atoms": 0,
+                "has_sybyl_types": False,
+                "atom_type_sample": None,
                 "mol2_path": None,
                 "sdf_path": str(sdf_path),
                 "error": "antechamber + obabel both failed",
@@ -403,8 +463,13 @@ def run_antechamber_preparation(
     logger.info(f"  RESULTS: {n_ok}/{n_total} molecules prepared")
     if n_failed > 0:
         logger.info(f"  FAILED:  {n_failed} molecules")
+    logger.info(f"  SYBYL:   {n_sybyl_ok} OK, {n_sybyl_fail} non-SYBYL")
     logger.info(f"  mol2:    {mol2_dir}/")
     logger.info("=" * 60)
+
+    if n_sybyl_fail > 0:
+        logger.warning(f"  {n_sybyl_fail} mol2 files have non-SYBYL atom types — "
+                       f"DOCK6 flex docking will treat these as rigid.")
 
     # --- Save summary CSV ---
     df_results = pd.DataFrame(results)
@@ -415,7 +480,7 @@ def run_antechamber_preparation(
     w = 70
     lines = [
         "=" * w,
-        "00d ANTECHAMBER PREPARATION - SUMMARY",
+        "01a ANTECHAMBER PREPARATION - SUMMARY",
         "=" * w,
         "",
         f"Date:              {datetime.now().strftime('%Y-%m-%d %H:%M')}",
@@ -424,6 +489,7 @@ def run_antechamber_preparation(
         f"Successful:        {n_ok}",
         f"Failed:            {n_failed}",
         f"Charge method:     {charge_method} ({atom_type})",
+        f"SYBYL compliant:   {n_sybyl_ok}/{n_ok}",
         "",
     ]
 
@@ -435,7 +501,7 @@ def run_antechamber_preparation(
 
     lines.extend([
         "-" * w,
-        f"{'Name':<30} {'Status':>8} {'Method':<25} {'Q':>4} {'Atoms':>6}",
+        f"{'Name':<30} {'Status':>8} {'Method':<25} {'Q':>4} {'Atoms':>6} {'SYBYL':>6}",
         "-" * w,
     ])
 
@@ -443,9 +509,10 @@ def run_antechamber_preparation(
         method_str = r.get("method") or r.get("error", "—")
         if len(method_str) > 23:
             method_str = method_str[:20] + "..."
+        sybyl_str = "yes" if r.get("has_sybyl_types") else "no"
         lines.append(
             f"{r['Name']:<30} {r['status']:>8} {method_str:<25} "
-            f"{r['net_charge']:>4} {r['mol2_n_atoms']:>6}"
+            f"{r['net_charge']:>4} {r['mol2_n_atoms']:>6} {sybyl_str:>6}"
         )
 
     if n_failed > 0:
@@ -465,6 +532,8 @@ def run_antechamber_preparation(
         "n_total": n_total,
         "n_ok": n_ok,
         "n_failed": n_failed,
+        "n_sybyl_ok": n_sybyl_ok,
+        "n_sybyl_fail": n_sybyl_fail,
         "results": results,
         "mol2_dir": str(mol2_dir),
         "summary_csv": str(csv_path),

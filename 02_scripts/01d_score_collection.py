@@ -4,8 +4,10 @@
 =============================================
 Collects DOCK6 docking scores, ranks molecules, and produces Excel output.
 
-Scans 01c output for scored mol2 files, extracts Grid_Score per pose,
-selects best pose per molecule, and generates ranked Excel + CSV.
+Scans 01c output for scored mol2 files, extracts ALL header fields per pose,
+selects best pose per molecule, merges SMILES, and generates ranked output.
+
+Output CSV is the canonical input for molecular_metrics enrichment.
 
 Hardcoded upstream paths:
     - 05_results/{campaign_id}/01c_dock6_run/{name}/{name}_scored.mol2
@@ -13,11 +15,13 @@ Hardcoded upstream paths:
     - Output: 05_results/{campaign_id}/01d_score_collection/
 
 Usage:
-    python 02_scripts/01d_score_collection.py --config 03_configs/01d_score_collection.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+    python 02_scripts/01d_score_collection.py \
+        --config 03_configs/01d_score_collection.yaml \
+        --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 
 Project: molecular_docking
-Module: 01d (DOCK6 engine) — renumbered from 02a (2026-03-16)
-Version: 1.1
+Module: 01d (DOCK6 engine)
+Version: 2.0
 """
 
 import argparse
@@ -53,7 +57,8 @@ def setup_log_file(log_path: Path, log_level: str = "INFO"):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="01d Score Collection — Collect DOCK6 scores and produce ranked Excel (DOCK6 engine)",
+        description="01d Score Collection — Collect DOCK6 scores and produce "
+                    "ranked Excel/CSV (DOCK6 engine)",
     )
     parser.add_argument("--config", "-c", type=str, required=True,
                         help="Module config YAML")
@@ -74,12 +79,12 @@ def main():
     mc = load_yaml(args.config)
     params = mc.get("parameters", {})
 
-
     docking_dir = args.docking_dir or str(
         Path("05_results") / campaign_id / "01c_dock6_run"
     )
     molecules_csv = str(
-        Path("05_results") / campaign_id / "00a_molecule_parser" / "unique_molecules.csv"
+        Path("05_results") / campaign_id / "00a_molecule_parser"
+        / "unique_molecules.csv"
     )
     output_dir = args.output or str(
         Path("05_results") / campaign_id / "01d_score_collection"
@@ -89,8 +94,7 @@ def main():
     score_key = params.get("score_key", "Grid_Score")
     max_molecules = params.get("max_molecules", 500)
     extract_best = params.get("extract_best_pose_mol2", True)
-    keep_all = params.get("keep_all_poses", False)
-    compute_props = params.get("compute_properties", True)
+    keep_all_poses = params.get("keep_all_poses", False)
     log_level = args.log_level or params.get("log_level", "INFO")
 
     # --- Output filenames from campaign config ---
@@ -99,7 +103,8 @@ def main():
     mol2_dirname = oc.get("mol2_dirname", "best_poses")
 
     # --- Setup logging ---
-    logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
+    logging.getLogger().setLevel(
+        getattr(logging, log_level.upper(), logging.INFO))
     log_path = Path(output_dir) / "01d_score_collection.log"
     setup_log_file(log_path, log_level)
 
@@ -109,6 +114,7 @@ def main():
     logger.info("=" * 60)
     logger.info(f"Campaign:     {campaign_id}")
     logger.info(f"Docking dir:  {docking_dir}")
+    logger.info(f"Molecules:    {molecules_csv}")
     logger.info(f"Score key:    {score_key}")
     logger.info(f"Output:       {output_dir}")
 
@@ -119,8 +125,7 @@ def main():
         score_key=score_key,
         max_molecules=max_molecules,
         extract_best_pose_mol2=extract_best,
-        keep_all_poses=keep_all,
-        compute_properties=compute_props,
+        keep_all_poses=keep_all_poses,
         scores_filename=scores_filename,
         mol2_dirname=mol2_dirname,
         source_label=cc.get("metadata", {}).get("source"),
@@ -131,10 +136,8 @@ def main():
         return 1
 
     logger.info("")
-    logger.info("DOCK6 pipeline complete.")
-    logger.info(f"  Scores: {result.get('output_xlsx')}")
-    logger.info(f"  Poses:  {result.get('mol2_dir')}/")
-
+    logger.info("DOCK6 score collection complete.")
+    logger.info(f"  CSV ready for molecular_metrics: {result['output_csv']}")
     return 0
 
 

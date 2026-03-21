@@ -34,7 +34,7 @@ Output (por molecula):
 Location: 01_src/molecular_docking/m01_docking/dock6_runner.py
 Project: molecular_docking
 Module: 01b (core)
-Version: 2.0 — symlinks for 80-char path limit (2026-03-13)
+Version: 2.2 — DOCK6.13 num_final_scored_poses + num_preclustered_conformers (2026-03-21)
 """
 
 import logging
@@ -111,7 +111,7 @@ simplex_cycle_converge                                       {simplex_cycle_conv
 simplex_trans_step                                           {simplex_trans_step}
 simplex_rot_step                                             {simplex_rot_step}
 simplex_tors_step                                            {simplex_tors_step}
-simplex_random_seed                                          0
+simplex_random_seed                                          {simplex_random_seed}
 simplex_restraint_min                                        no
 atom_model                                                   all
 vdw_defn_file                                                {vdw_defn_file}
@@ -120,6 +120,8 @@ flex_drive_file                                              {flex_drive_file}
 ligand_outfile_prefix                                        {output_prefix}
 write_orientations                                           {write_orientations}
 num_scored_conformers                                        {num_scored_conformers}
+num_final_scored_poses                                       {num_final_scored_poses}
+num_preclustered_conformers                                  {num_preclustered_conformers}
 rank_ligands                                                 no
 """
 
@@ -169,7 +171,7 @@ simplex_cycle_converge                                       {simplex_cycle_conv
 simplex_trans_step                                           {simplex_trans_step}
 simplex_rot_step                                             {simplex_rot_step}
 simplex_tors_step                                            {simplex_tors_step}
-simplex_random_seed                                          0
+simplex_random_seed                                          {simplex_random_seed}
 simplex_restraint_min                                        no
 atom_model                                                   all
 vdw_defn_file                                                {vdw_defn_file}
@@ -178,6 +180,8 @@ flex_drive_file                                              {flex_drive_file}
 ligand_outfile_prefix                                        {output_prefix}
 write_orientations                                           {write_orientations}
 num_scored_conformers                                        {num_scored_conformers}
+num_final_scored_poses                                       {num_final_scored_poses}
+num_preclustered_conformers                                  {num_preclustered_conformers}
 rank_ligands                                                 no
 """
 
@@ -337,8 +341,11 @@ def generate_dock6_input(
         "simplex_trans_step": 1.0,
         "simplex_rot_step": 0.1,
         "simplex_tors_step": 10.0,
+        "simplex_random_seed": 0,
         # Output
         "num_scored_conformers": 20,
+        "num_final_scored_poses": 100,
+        "num_preclustered_conformers": 500,
         "write_orientations": "no",
     }
 
@@ -571,7 +578,9 @@ def run_dock6_batch(
         output_dir: Directory for docking output
         search_method: "flex" | "rigid"
         max_orientations: Maximum orientations
-        num_scored_conformers: Poses to write per molecule
+        num_scored_conformers: Legacy param (DOCK6 <6.13). Also set via kwargs:
+            num_final_scored_poses (default 100) and
+            num_preclustered_conformers (default 500) for DOCK6 6.13+
         minimize: Run simplex minimization
         simplex_max_iterations: Max minimization iterations
         timeout_per_molecule: Timeout in seconds per molecule

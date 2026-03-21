@@ -1,7 +1,6 @@
 # =============================================================================
 # 02b GNINA Runner - Configuration (molecular_docking v2.0)
 # =============================================================================
-# Ejecuta GNINA (Vina + CNN scoring) para cada ligando.
 #
 # GNINA produce 3 scores por pose:
 #   - vina_affinity: Score empírico Vina (kcal/mol)
@@ -18,7 +17,20 @@
 #
 # Project: molecular_docking
 # Module: 02b (GNINA engine)
-# Version: 1.0
+# Version: 2.0 — 100-pose sampling for robust clustering (2026-03-21)
+#
+# CHANGES v1.0 → v2.0:
+#   - exhaustiveness:     8 → 32  (4× more MC sampling per run)
+#   - num_modes:          9 → 100 (100 poses for clustering)
+#   - timeout:          600 → 1800 (30 min for higher exhaustiveness)
+#
+# RATIONALE:
+#   With exhaustiveness=8 and num_modes=9, GNINA produced exactly 9 poses.
+#   For UDX, the near-native pose (0.86 Å) was #4, not #1 — CNN Score
+#   anti-correlated with true pose quality for this system.
+#   100 poses enables RMSD-based clustering to identify dominant binding
+#   modes independent of scoring function ranking.
+#   See: Woods et al. JCIM 2018 (100 poses → ~15 clusters for carbohydrates)
 # =============================================================================
 
 parameters:
@@ -47,15 +59,15 @@ parameters:
   # "auto" = SDF primero, fallback mol2
   ligand_format: "auto"
 
-  # --- Search Parameters ---
-  exhaustiveness: 8
-  num_modes: 9
+  # --- Search Parameters (v2.0: greatly increased) ---
+  exhaustiveness: 32
+  num_modes: 100
   seed: 42
 
   # --- Execution ---
   # Workers paralelos (GPU: 1-2, CPU: 4-8)
   n_workers: 2
-  timeout: 600
+  timeout: 1800
 
   # Path a GNINA (null = buscar automáticamente)
   gnina_path: null
