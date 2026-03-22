@@ -1,0 +1,57 @@
+# =============================================================================
+# 05a Parse & Fragment - Configuration (molecular_docking v2.0)
+# =============================================================================
+# Parses docking poses + identifies rigid fragments per molecule.
+# This is the foundation for all downstream clustering/analysis.
+#
+# INPUT:
+#   GNINA: 05_results/{campaign_id}/02b_gnina_run/poses/{name}_gnina.sdf
+#   DOCK6: 05_results/{campaign_id}/01c_dock6_run/{name}/{name}_scored.mol2
+#   Molecule sources: unique_molecules.csv, antechamber/mol2, ionization/sdf
+#
+# OUTPUT: 05_results/{campaign_id}/05a_parse_and_fragment/
+#   {name}.npz  — coords (n_poses, n_atoms, 3), scores, elements
+#   {name}.json — fragment definitions (rigid segments, atom indices)
+#   parse_summary.csv
+#
+# REQUIRES: RDKit (for fragmentation; falls back to whole-molecule if unavailable)
+#
+# Project: molecular_docking
+# Module: 05a
+# Version: 2.0
+# =============================================================================
+
+parameters:
+
+  # --- Engine ---
+  engine: "gnina"
+
+  # --- Fragment Identification ---
+  # Minimum heavy atoms per fragment. Smaller get merged into neighbors.
+  # 4 = stable for RMSD; 3 = finer (separates individual phosphate groups)
+  min_fragment_size: 4
+
+  log_level: "INFO"
+
+outputs:
+  subdir: "05a_parse_and_fragment"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/05a_parse_and_fragment.py \
+#     --config 03_configs/05a_parse_and_fragment.yaml \
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
+#
+# # Single molecule:
+# python 02_scripts/05a_parse_and_fragment.py \
+#     --config 03_configs/05a_parse_and_fragment.yaml \
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml \
+#     --name UDX
+#
+# # DOCK6 engine:
+# python 02_scripts/05a_parse_and_fragment.py \
+#     --config 03_configs/05a_parse_and_fragment.yaml \
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml \
+#     --engine dock6
+# =============================================================================

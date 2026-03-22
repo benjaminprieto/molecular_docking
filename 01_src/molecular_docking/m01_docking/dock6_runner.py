@@ -95,7 +95,7 @@ grid_score_grid_prefix                                       {grid_prefix}
 multigrid_score_secondary                                    no
 dock3.5_score_secondary                                      no
 continuous_score_secondary                                   no
-footprint_similarity_score_secondary                         no
+{footprint_block}
 pharmacophore_score_secondary                                no
 descriptor_score_secondary                                   no
 gbsa_zou_score_secondary                                     no
@@ -156,7 +156,7 @@ grid_score_grid_prefix                                       {grid_prefix}
 multigrid_score_secondary                                    no
 dock3.5_score_secondary                                      no
 continuous_score_secondary                                   no
-footprint_similarity_score_secondary                         no
+{footprint_block}
 pharmacophore_score_secondary                                no
 descriptor_score_secondary                                   no
 gbsa_zou_score_secondary                                     no
@@ -342,6 +342,8 @@ def generate_dock6_input(
         "simplex_rot_step": 0.1,
         "simplex_tors_step": 10.0,
         "simplex_random_seed": 0,
+        # Footprint (per-residue energy decomposition)
+        "footprint_block": "footprint_similarity_score_secondary                         no",
         # Output
         "num_scored_conformers": 20,
         "num_final_scored_poses": 100,
@@ -356,6 +358,29 @@ def generate_dock6_input(
             if isinstance(val, bool):
                 val = "yes" if val else "no"
             template_vars[key] = val
+
+    # Handle footprint scoring
+    receptor_mol2 = kwargs.pop("receptor_mol2", None)
+    reference_mol2 = kwargs.pop("reference_mol2", None)
+    compute_footprint = kwargs.pop("compute_footprint_score", False)
+    if compute_footprint and receptor_mol2 and reference_mol2:
+        template_vars["footprint_block"] = (
+            "footprint_similarity_score_secondary                         yes\n"
+            f"fps_score_use_footprint_reference_mol2                       yes\n"
+            f"fps_score_footprint_reference_mol2_filename                  {reference_mol2}\n"
+            "fps_score_foot_compare_type                                  Euclidean\n"
+            "fps_score_normalize_foot                                     no\n"
+            "fps_score_foot_comp_all_residue                              yes\n"
+            f"fps_score_receptor_filename                                  {receptor_mol2}\n"
+            "fps_score_vdw_att_exp                                        6\n"
+            "fps_score_vdw_rep_exp                                        9\n"
+            "fps_score_vdw_rep_rad_scale                                  1\n"
+            "fps_score_use_distance_dependent_dielectric                  yes\n"
+            "fps_score_dielectric                                         4.0\n"
+            "fps_score_vdw_fp_scale                                       1\n"
+            "fps_score_es_fp_scale                                        1\n"
+            "fps_score_hb_fp_scale                                        0"
+        )
 
     # Handle 'minimize' bool -> string
     if isinstance(template_vars["minimize"], bool):
@@ -410,6 +435,8 @@ def _setup_mol_symlinks(
         spheres_file: str,
         grid_prefix: str,
         dock6_params: Dict[str, str],
+        receptor_mol2: Optional[str] = None,
+        reference_mol2: Optional[str] = None,
 ) -> Dict[str, str]:
     """
     Create symlinks in the molecule output directory for all files
@@ -448,12 +475,19 @@ def _setup_mol_symlinks(
         else:
             short_names[key] = src
 
+    # Receptor mol2 (for footprint scoring)
+    if receptor_mol2 and Path(receptor_mol2).exists():
+        rec_name = Path(receptor_mol2).name
+        _create_symlink(receptor_mol2, mol_out / rec_name)
+        short_names["receptor_mol2"] = rec_name
+
+    # Reference mol2 (for footprint comparison)
+    if reference_mol2 and Path(reference_mol2).exists():
+        ref_name = "fps_reference.mol2"
+        _create_symlink(reference_mol2, mol_out / ref_name)
+        short_names["reference_mol2"] = ref_name
+
     return short_names
-
-
-# =============================================================================
-# DOCK6 EXECUTION
-# =============================================================================
 
 def run_dock6_single(
         dock_input: str,
@@ -562,6 +596,8 @@ def run_dock6_batch(
         simplex_max_iterations: int = 500,
         timeout_per_molecule: int = 600,
         molecule_filter: Optional[List[str]] = None,
+        receptor_mol2: Optional[str] = None,
+        reference_mol2: Optional[str] = None,
         dry_run: bool = False,
         **kwargs,
 ) -> Dict[str, Any]:
@@ -664,6 +700,8 @@ def run_dock6_batch(
             spheres_file=spheres_file,
             grid_prefix=grid_prefix,
             dock6_params=dock6_params,
+            receptor_mol2=receptor_mol2,
+            reference_mol2=reference_mol2,
         )
 
         # --- Generate input file with short filenames ---
@@ -684,6 +722,8 @@ def run_dock6_batch(
             num_scored_conformers=num_scored_conformers,
             minimize=minimize,
             simplex_max_iterations=simplex_max_iterations,
+            receptor_mol2=short.get("receptor_mol2"),
+            reference_mol2=short.get("reference_mol2"),
             **kwargs,
         )
 

@@ -1,0 +1,43 @@
+# =============================================================================
+# 05e Structure Export - Configuration (molecular_docking v2.0)
+# =============================================================================
+# Exports mol2 representatives + ChimeraX scripts, colored by hotspot.
+#
+# INPUT:
+#   05a (parse_and_fragment), 05b (fragment_clustering)
+#   05c (score_decomposition) — optional, for sweet spot poses
+#   05d (binding_site_hotspots) — optional, for hotspot coloring
+#
+# OUTPUT: 05_results/{campaign_id}/05e_structure_export/
+#   {name}/
+#     {name}_frag0_cl0_H1.mol2           — fragment atoms, hotspot-tagged
+#     {name}_frag0_cl0_H1_full.mol2      — full molecule at medoid
+#     {name}_full_consensus.mol2          — all fragments in dominant cluster
+#     {name}_sweet1_vina_affinity.mol2    — best sweet spot pose
+#     {name}_visualize.cxc                — per-molecule ChimeraX script
+#   master_visualization.cxc              — global: receptor + hotspots + top poses
+#
+# Project: molecular_docking
+# Module: 05e
+# Version: 2.0
+# =============================================================================
+
+parameters:
+
+  max_clusters_per_fragment: 3
+
+  receptor_path: null
+
+  log_level: "INFO"
+
+outputs:
+  subdir: "05e_structure_export"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/05e_structure_export.py \
+#     --config 03_configs/05e_structure_export.yaml \
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml \
+#     --receptor 04_data/campaigns/UDX_pharmit_pH63/receptor/XT1_6EJ7.pdb
+# =============================================================================

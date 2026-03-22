@@ -1,0 +1,50 @@
+# =============================================================================
+# 05c Score Decomposition - Configuration (molecular_docking v2.0)
+# =============================================================================
+# Regresses docking scores onto fragment cluster positions.
+# Answers: "How much does each fragment contribute to the score, and in
+# which position?"
+#
+# INPUT:
+#   05_results/{campaign_id}/05a_parse_and_fragment/
+#   05_results/{campaign_id}/05b_fragment_clustering/
+#
+# OUTPUT: 05_results/{campaign_id}/05c_score_decomposition/
+#   {name}_scores.json — coefficients, R², sweet spots, consensus
+#   score_decomposition_summary.csv
+#
+# Model: Score = Σ C(fragment_i, cluster_position_ij) + intercept
+#
+# Project: molecular_docking
+# Module: 05c
+# Version: 2.0
+# =============================================================================
+
+parameters:
+
+  # Score types to decompose. null = all available scores.
+  # For GNINA: ["vina_affinity", "cnn_score", "cnn_affinity"]
+  # For DOCK6: ["Grid_Score", "Grid_vdw", "Grid_es"]
+  score_keys: null
+
+  # Number of top sweet spot combinations to report per molecule
+  n_sweet_spots: 10
+
+  log_level: "INFO"
+
+outputs:
+  subdir: "05c_score_decomposition"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/05c_score_decomposition.py \
+#     --config 03_configs/05c_score_decomposition.yaml \
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
+#
+# # Only vina_affinity:
+# python 02_scripts/05c_score_decomposition.py \
+#     --config 03_configs/05c_score_decomposition.yaml \
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml \
+#     --score-key vina_affinity
+# =============================================================================

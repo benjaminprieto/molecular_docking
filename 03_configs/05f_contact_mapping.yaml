@@ -1,0 +1,48 @@
+# =============================================================================
+# 05f Contact Mapping - Configuration (molecular_docking v2.0)
+# =============================================================================
+# Identifies receptor residues contacted by each fragment cluster.
+# Aggregates contacts per hotspot to find consensus interactions.
+#
+# INPUT:
+#   05a (parse_and_fragment), 05b (fragment_clustering)
+#   05d (binding_site_hotspots) — optional, for hotspot contact aggregation
+#   Receptor PDB — required (--receptor flag)
+#
+# OUTPUT: 05_results/{campaign_id}/05f_contact_mapping/
+#   {name}_contacts.json   — per-molecule contacts
+#   contact_summary.csv    — flat: one row per contact
+#   hotspot_contacts.csv   — consensus: residues per hotspot
+#
+# Contact types by distance:
+#   < 2.5 A: strong H-bond / salt bridge
+#   < 3.5 A: H-bond / polar
+#   < 4.5 A: van der Waals
+#   < 6.0 A: weak / solvent-mediated
+#
+# Project: molecular_docking
+# Module: 05f
+# Version: 2.0
+# =============================================================================
+
+parameters:
+
+  # Distance cutoff for contacts (Angstrom)
+  cutoff: 4.5
+
+  # Max clusters per fragment to analyze
+  max_clusters_per_fragment: 3
+
+  log_level: "INFO"
+
+outputs:
+  subdir: "05f_contact_mapping"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/05f_contact_mapping.py \
+#     --config 03_configs/05f_contact_mapping.yaml \
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml \
+#     --receptor 04_data/campaigns/UDX_pharmit_pH63/receptor/XT1_6EJ7.pdb
+# =============================================================================

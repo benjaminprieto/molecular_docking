@@ -1,0 +1,42 @@
+# =============================================================================
+# 05b Fragment Clustering - Configuration (molecular_docking v2.0)
+# =============================================================================
+# DBSCAN clustering per rigid fragment per molecule.
+#
+# INPUT:  05_results/{campaign_id}/05a_parse_and_fragment/
+# OUTPUT: 05_results/{campaign_id}/05b_fragment_clustering/
+#   {name}_clusters.npz  — label matrix + RMSD matrices
+#   {name}_clusters.json — cluster stats per fragment
+#   cluster_summary.csv
+#
+# Project: molecular_docking
+# Module: 05b
+# Version: 2.0
+# =============================================================================
+
+parameters:
+
+  # --- DBSCAN ---
+  # eps: RMSD cutoff in Angstrom.
+  # 3.0 works for nucleotide-sugars (flexible, ~13 rotatable bonds).
+  # Use 2.0 for rigid drug-like molecules.
+  eps: 3.0
+
+  # Minimum poses to form a cluster core.
+  min_samples: 5
+
+  # --- Confidence ---
+  min_dominant_fraction: 0.15
+
+  log_level: "INFO"
+
+outputs:
+  subdir: "05b_fragment_clustering"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/05b_fragment_clustering.py \
+#     --config 03_configs/05b_fragment_clustering.yaml \
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
+# =============================================================================

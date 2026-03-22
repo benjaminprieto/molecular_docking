@@ -213,6 +213,7 @@ def run_gnina_single(
         # Execution
         gnina_path: str = "gnina",
         timeout: int = 600,
+        atom_term_data: bool = True,
 ) -> GninaResult:
     """Run GNINA for a single ligand."""
     name = Path(ligand_file).stem
@@ -275,6 +276,10 @@ def run_gnina_single(
 
     # Seed
     cmd.extend(["--seed", str(seed)])
+
+    # Per-atom interaction terms embedded in output SDF
+    if atom_term_data:
+        cmd.append("--atom_term_data")
 
     # Execute
     try:
@@ -343,6 +348,7 @@ def run_gnina_batch(
         seed: int = 42,
         n_workers: int = 2,
         timeout: int = 600,
+        atom_term_data: bool = True,
         gnina_path: str = "gnina",
         ligand_format: str = "auto",
         # Autobox
@@ -392,6 +398,7 @@ def run_gnina_batch(
             mode=mode, cnn_scoring=cnn_scoring,
             exhaustiveness=exhaustiveness, num_modes=num_modes,
             seed=seed, gnina_path=gnina_path, timeout=timeout,
+            atom_term_data=atom_term_data,
         )
 
     # Parallel execution
@@ -464,6 +471,7 @@ def run_gnina_docking(
         # Execution
         n_workers: int = 2,
         timeout: int = 600,
+        atom_term_data: bool = True,
         gnina_path: Optional[str] = None,
         ligand_format: str = "auto",
         # Autobox
@@ -508,6 +516,7 @@ def run_gnina_docking(
         mode=mode, cnn_scoring=cnn_scoring,
         exhaustiveness=exhaustiveness, num_modes=num_modes,
         seed=seed, n_workers=n_workers, timeout=timeout,
+        atom_term_data=atom_term_data,
         gnina_path=gnina, ligand_format=ligand_format,
         use_autobox=use_autobox, autobox_ligand=autobox_ligand,
         autobox_add=autobox_add,

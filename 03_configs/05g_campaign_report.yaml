@@ -1,0 +1,18 @@
+# =============================================================================
+# 05g Campaign Report - Configuration
+# =============================================================================
+# Generates consolidated HTML report with figures, tables, and text.
+#
+# INPUT:  05a-05f outputs
+# OUTPUT: 05_results/{campaign_id}/05g_campaign_report/
+#
+# Project: molecular_docking
+# Module: 05g
+# Version: 1.0
+# =============================================================================
+
+parameters:
+  engine: "gnina"
+
+outputs:
+  subdir: "05g_campaign_report"

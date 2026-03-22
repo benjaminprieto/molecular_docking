@@ -1,0 +1,64 @@
+# =============================================================================
+# 05d Binding Site Hotspots - Configuration (molecular_docking v2.0)
+# =============================================================================
+# Cross-molecule analysis: clusters fragment centroids from all molecules
+# to find regions of the binding site where fragments converge.
+#
+# INPUT:
+#   05_results/{campaign_id}/05a_parse_and_fragment/
+#   05_results/{campaign_id}/05b_fragment_clustering/
+#   05_results/{campaign_id}/05c_score_decomposition/ (optional)
+#
+# OUTPUT: 05_results/{campaign_id}/05d_binding_site_hotspots/
+#   hotspot_map.json       — full details per hotspot
+#   hotspot_summary.csv    — one row per hotspot-member
+#   hotspot_overview.csv   — one row per hotspot
+#   hotspot_overlay.cxc    — ChimeraX visualization
+#   hotspots.bild          — ChimeraX BILD sphere data
+#
+# Project: molecular_docking
+# Module: 05d
+# Version: 2.0
+# =============================================================================
+
+parameters:
+
+  # --- Hotspot Detection ---
+  # Spatial DBSCAN eps: how close centroids must be to form a hotspot.
+  # 2.0 A works for focused libraries (similar scaffolds).
+  # Increase to 3.0-4.0 for diverse libraries.
+  hotspot_eps: 2.0
+
+  # Minimum unique molecules contributing to a hotspot.
+  # 3 = permissive (finds rare overlaps).
+  # 10 = strict (only strong pharmacophoric features).
+  min_molecules: 3
+
+  # Only include clusters with this minimum dominant fraction
+  min_dominant_fraction: 0.15
+
+  # Include non-dominant clusters (secondary binding modes)?
+  include_non_dominant: false
+
+  # Receptor PDB path (for ChimeraX script)
+  receptor_path: null
+
+  log_level: "INFO"
+
+outputs:
+  subdir: "05d_binding_site_hotspots"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/05d_binding_site_hotspots.py \
+#     --config 03_configs/05d_binding_site_hotspots.yaml \
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
+#
+# # With receptor and tuned parameters:
+# python 02_scripts/05d_binding_site_hotspots.py \
+#     --config 03_configs/05d_binding_site_hotspots.yaml \
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml \
+#     --receptor 04_data/campaigns/UDX_pharmit_pH63/receptor/XT1_6EJ7.pdb \
+#     --eps 3.5 --min-molecules 5
+# =============================================================================
