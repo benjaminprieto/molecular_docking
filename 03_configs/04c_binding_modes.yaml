@@ -1,0 +1,28 @@
+# =============================================================================
+# 04c Binding Modes - Configuration (DOCK6 analysis)
+# =============================================================================
+# Characterize DOCK6 binding modes per molecule.
+# Each DOCK6 pose is a genuine binding mode (pre-clustered at 2.0Å RMSD).
+#
+# INPUT:  05_results/{campaign_id}/01c_dock6_run/{name}/{name}_scored.mol2
+#         05_results/{campaign_id}/05_dock6/04b_footprint_analysis/ (optional)
+# OUTPUT: 05_results/{campaign_id}/05_dock6/04c_binding_modes/
+#
+# Project: molecular_docking
+# Module: 04c (DOCK6 analysis)
+# Version: 1.0 (2026-03-22)
+# =============================================================================
+
+parameters:
+  log_level: "INFO"
+
+outputs:
+  subdir: "05_dock6/04c_binding_modes"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/04c_binding_modes.py \
+#     --config 03_configs/04c_binding_modes.yaml \
+#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+# =============================================================================

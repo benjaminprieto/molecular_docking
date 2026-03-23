@@ -1,0 +1,25 @@
+# =============================================================================
+# 01d Footprint Re-scoring - Configuration (DOCK6 engine)
+# =============================================================================
+# Re-scores existing DOCK6 poses with per-residue energy decomposition.
+# Reads scored mol2 from 01c, runs dock6 with fps_score_primary,
+# outputs mol2 with FPS_vdw, FPS_es, H-bond columns per residue.
+#
+# This is a POST-DOCKING step (no re-docking, orient_ligand=no).
+# Based on Rizzo Lab protocol and DOCK6 manual §2.11.9.
+#
+# INPUT:  05_results/{campaign}/01c_dock6_run/{name}/{name}_scored.mol2
+# OUTPUT: 05_results/{campaign}/01d_footprint_rescore/{name}/{name}_fps_scored.mol2
+#
+# Project: molecular_docking
+# Module: 01d (DOCK6)
+# Version: 1.0
+# =============================================================================
+
+parameters:
+  dock6_home: "/opt/dock6"
+  timeout_per_molecule: 300
+  log_level: "INFO"
+
+outputs:
+  subdir: "01d_footprint_rescore"

@@ -3,25 +3,24 @@
 # run_pipeline.sh — Run the complete docking + analysis pipeline
 # =============================================================================
 #
-# Architecture (v3.0 — 2026-03-21):
+# Architecture (v4.0 — 2026-03-22):
 #   00   Shared preparation (00a parser, 00b receptor, 00c ionization, 00d binding site)
-#   01   DOCK6 engine (01a antechamber, 01b grids, 01c dock, 01d scores)
+#   01   DOCK6 engine (01a antechamber, 01b grids, 01c dock, 01d footprint, 01e scores)
 #   02   GNINA engine (02a prep, 02b dock+CNN, 02c scores)
-#   05   Clustering & Analysis (05a parse, 05b cluster, 05c scores, 05d hotspots, 05e export, 05f contacts)
+#   05   Clustering & Analysis (05a-05g)
 #
 # Usage:
-#   bash run_pipeline.sh <campaign_id> [engine] [start_from]
+#   bash run_pipeline.sh <campaign_id> [engine] [start_from] [stop_at]
 #
 # Examples:
-#   bash run_pipeline.sh UDX_pharmit_pH63                    # full pipeline, both engines
-#   bash run_pipeline.sh UDX_pharmit_pH63 gnina              # GNINA only, from scratch
-#   bash run_pipeline.sh UDX_pharmit_pH63 gnina 02b          # start from 02b GNINA docking
-#   bash run_pipeline.sh UDX_pharmit_pH63 gnina 05a          # start from analysis only
-#   bash run_pipeline.sh UDX_pharmit_pH63 dock6 01c          # start from DOCK6 docking
-#   bash run_pipeline.sh UDX_pharmit_pH63 both 05a           # analysis for both engines
+#   bash run_pipeline.sh UDX_pharmit_pH63                         # full pipeline, both engines
+#   bash run_pipeline.sh UDX_pharmit_pH63 dock6 01c 01e           # dock + footprint + scores
+#   bash run_pipeline.sh UDX_pharmit_pH63 dock6 01d               # footprint onward
+#   bash run_pipeline.sh UDX_pharmit_pH63 gnina 05a 05g           # GNINA analysis only
+#   bash run_pipeline.sh UDX_pharmit_pH63 dock6 01c 01c           # only 01c (single module)
 #
 # For nohup:
-#   nohup bash run_pipeline.sh UDX_pharmit_pH63 gnina 02b > overnight.log 2>&1 &
+#   nohup bash run_pipeline.sh UDX_pharmit_pH63 dock6 01c 01e > logs/dock6.log 2>&1 &
 #
 # =============================================================================
 
@@ -30,15 +29,27 @@ set -e
 CAMPAIGN_ID="${1:-}"
 ENGINE="${2:-both}"
 START="${3:-00a}"
+STOP="${4:-05g}"
 
 if [ -z "$CAMPAIGN_ID" ]; then
-    echo "Usage: bash run_pipeline.sh <campaign_id> [dock6|gnina|both] [start_from]"
+    echo "Usage: bash run_pipeline.sh <campaign_id> [engine] [start_from] [stop_at]"
+    echo ""
+    echo "  engine:     dock6 | gnina | both (default: both)"
+    echo "  start_from: module to start from (default: 00a)"
+    echo "  stop_at:    module to stop at, inclusive (default: 05g)"
+    echo ""
+    echo "Examples:"
+    echo "  bash run_pipeline.sh UDX_pharmit_pH63                       # full pipeline"
+    echo "  bash run_pipeline.sh UDX_pharmit_pH63 dock6 01c 01e         # 01c → 01d → 01e"
+    echo "  bash run_pipeline.sh UDX_pharmit_pH63 dock6 01d             # 01d onward"
+    echo "  bash run_pipeline.sh UDX_pharmit_pH63 gnina 05a 05g         # analysis only"
     echo ""
     echo "Modules:"
     echo "  00a  Molecule Parser           00b  Receptor Preparation"
     echo "  00c  Ionization Profiling      00d  Binding Site Definition"
     echo "  01a  Antechamber (DOCK6)       01b  Grid Generation"
-    echo "  01c  DOCK6 Docking             01d  DOCK6 Scores"
+    echo "  01c  DOCK6 Docking             01d  Footprint Re-scoring"
+    echo "  01e  DOCK6 Score Collection"
     echo "  02a  GNINA Preparation         02b  GNINA Docking"
     echo "  02c  GNINA Scores"
     echo "  05a  Parse & Fragment          05b  Fragment Clustering"
@@ -64,24 +75,25 @@ RECEPTOR="04_data/campaigns/${CAMPAIGN_ID}/receptor/XT1_6EJ7.pdb"
 # Module ordering for comparison
 declare -A MODULE_ORDER=(
     [00a]=1  [00b]=2  [00c]=3  [00d]=4
-    [01a]=10 [01b]=11 [01c]=12 [01d]=13
+    [01a]=10 [01b]=11 [01c]=12 [01d]=13 [01e]=14
     [02a]=20 [02b]=21 [02c]=22
     [05a]=50 [05b]=51 [05c]=52 [05d]=53 [05e]=54 [05f]=55 [05g]=56
 )
 
 START_NUM=${MODULE_ORDER[$START]:-1}
+STOP_NUM=${MODULE_ORDER[$STOP]:-56}
 
 should_run() {
     local module=$1
     local num=${MODULE_ORDER[$module]:-0}
-    [ $num -ge $START_NUM ]
+    [ $num -ge $START_NUM ] && [ $num -le $STOP_NUM ]
 }
 
 echo "============================================================"
-echo "  molecular_docking — Pipeline v3.0"
+echo "  molecular_docking — Pipeline v4.0"
 echo "  Campaign: ${CAMPAIGN_ID}"
 echo "  Engine:   ${ENGINE}"
-echo "  Start:    ${START}"
+echo "  Range:    ${START} → ${STOP}"
 echo "  Started:  $(date '+%Y-%m-%d %H:%M:%S')"
 echo "============================================================"
 echo ""
@@ -139,8 +151,14 @@ if [ "$ENGINE" = "dock6" ] || [ "$ENGINE" = "both" ]; then
     fi
 
     if should_run "01d"; then
-        echo "[01d] DOCK6 Score Collection — $(date '+%H:%M:%S')"
-        python 02_scripts/01d_score_collection.py --config 03_configs/01d_score_collection.yaml --campaign "$CAMPAIGN"
+        echo "[01d] Footprint Re-scoring — $(date '+%H:%M:%S')"
+        python 02_scripts/01d_footprint_rescore.py --config 03_configs/01d_footprint_rescore.yaml --campaign "$CAMPAIGN"
+        echo ""
+    fi
+
+    if should_run "01e"; then
+        echo "[01e] DOCK6 Score Collection — $(date '+%H:%M:%S')"
+        python 02_scripts/01e_score_collection.py --config 03_configs/01e_score_collection.yaml --campaign "$CAMPAIGN"
         echo ""
     fi
 fi
@@ -171,71 +189,63 @@ if [ "$ENGINE" = "gnina" ] || [ "$ENGINE" = "both" ]; then
 fi
 
 # =============================================================================
-# m05 — GNINA ANALYSIS (m05_gnina_analysis)
+# 05 — GNINA ANALYSIS (m05)
 # =============================================================================
 
 if [ "$ENGINE" = "gnina" ] || [ "$ENGINE" = "both" ]; then
-
-echo "========== m05: GNINA ANALYSIS =========="
-echo ""
-
-if should_run "05a"; then
-    echo "[05a] Parse & Fragment — $(date '+%H:%M:%S')"
-    python 02_scripts/05a_parse_and_fragment.py -c 03_configs/05a_parse_and_fragment.yaml --campaign "$CAMPAIGN"
+    echo "========== m05: GNINA ANALYSIS =========="
     echo ""
-fi
 
-if should_run "05b"; then
-    echo "[05b] Fragment Clustering — $(date '+%H:%M:%S')"
-    python 02_scripts/05b_fragment_clustering.py -c 03_configs/05b_fragment_clustering.yaml --campaign "$CAMPAIGN"
-    echo ""
-fi
-
-if should_run "05c"; then
-    echo "[05c] Score Decomposition — $(date '+%H:%M:%S')"
-    python 02_scripts/05c_score_decomposition.py -c 03_configs/05c_score_decomposition.yaml --campaign "$CAMPAIGN"
-    echo ""
-fi
-
-if should_run "05d"; then
-    echo "[05d] Binding Site Hotspots — $(date '+%H:%M:%S')"
-    python 02_scripts/05d_binding_site_hotspots.py -c 03_configs/05d_binding_site_hotspots.yaml --campaign "$CAMPAIGN" --receptor "$RECEPTOR"
-    echo ""
-fi
-
-if should_run "05e"; then
-    echo "[05e] Structure Export — $(date '+%H:%M:%S')"
-    python 02_scripts/05e_structure_export.py -c 03_configs/05e_structure_export.yaml --campaign "$CAMPAIGN" --receptor "$RECEPTOR"
-    echo ""
-fi
-
-if should_run "05f"; then
-    echo "[05f] Contact Mapping — $(date '+%H:%M:%S')"
-    python 02_scripts/05f_contact_mapping.py -c 03_configs/05f_contact_mapping.yaml --campaign "$CAMPAIGN" --receptor "$RECEPTOR"
-    echo ""
-fi
-
-if should_run "05g"; then
-    echo "[05g] Campaign Report — $(date '+%H:%M:%S')"
-    REFERENCE="04_data/campaigns/${CAMPAIGN_ID}/reference/UDX.mol2"
-    if [ -f "$REFERENCE" ]; then
-        python 02_scripts/05g_campaign_report.py -c 03_configs/05g_campaign_report.yaml --campaign "$CAMPAIGN" --reference "$REFERENCE"
-    else
-        python 02_scripts/05g_campaign_report.py -c 03_configs/05g_campaign_report.yaml --campaign "$CAMPAIGN"
+    if should_run "05a"; then
+        echo "[05a] Parse & Fragment — $(date '+%H:%M:%S')"
+        python 02_scripts/05a_parse_and_fragment.py -c 03_configs/05a_parse_and_fragment.yaml --campaign "$CAMPAIGN"
+        echo ""
     fi
-    echo ""
-fi
 
-fi  # ENGINE = gnina or both
+    if should_run "05b"; then
+        echo "[05b] Fragment Clustering — $(date '+%H:%M:%S')"
+        python 02_scripts/05b_fragment_clustering.py -c 03_configs/05b_fragment_clustering.yaml --campaign "$CAMPAIGN"
+        echo ""
+    fi
+
+    if should_run "05c"; then
+        echo "[05c] Score Decomposition — $(date '+%H:%M:%S')"
+        python 02_scripts/05c_score_decomposition.py -c 03_configs/05c_score_decomposition.yaml --campaign "$CAMPAIGN"
+        echo ""
+    fi
+
+    if should_run "05d"; then
+        echo "[05d] Binding Site Hotspots — $(date '+%H:%M:%S')"
+        python 02_scripts/05d_binding_site_hotspots.py -c 03_configs/05d_binding_site_hotspots.yaml --campaign "$CAMPAIGN"
+        echo ""
+    fi
+
+    if should_run "05e"; then
+        echo "[05e] Structure Export — $(date '+%H:%M:%S')"
+        python 02_scripts/05e_structure_export.py -c 03_configs/05e_structure_export.yaml --campaign "$CAMPAIGN"
+        echo ""
+    fi
+
+    if should_run "05f"; then
+        echo "[05f] Contact Mapping — $(date '+%H:%M:%S')"
+        python 02_scripts/05f_contact_mapping.py -c 03_configs/05f_contact_mapping.yaml --campaign "$CAMPAIGN"
+        echo ""
+    fi
+
+    if should_run "05g"; then
+        echo "[05g] Campaign Report — $(date '+%H:%M:%S')"
+        python 02_scripts/05g_campaign_report.py -c 03_configs/05g_campaign_report.yaml --campaign "$CAMPAIGN"
+        echo ""
+    fi
+fi
 
 # =============================================================================
 # DONE
 # =============================================================================
 
 echo "============================================================"
-echo "  Pipeline complete: ${CAMPAIGN_ID} (${ENGINE}, from ${START})"
+echo "  Pipeline complete"
+echo "  Campaign: ${CAMPAIGN_ID}"
+echo "  Engine:   ${ENGINE}"
 echo "  Finished: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "============================================================"
-echo ""
-echo "Results in: 05_results/${CAMPAIGN_ID}/"
-echo "  GNINA analysis: 05_results/${CAMPAIGN_ID}/m05_gnina_analysis/"

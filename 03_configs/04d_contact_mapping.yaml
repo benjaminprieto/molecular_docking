@@ -1,0 +1,31 @@
+# =============================================================================
+# 04d Contact Mapping - Configuration (DOCK6 analysis)
+# =============================================================================
+# Distance-based contacts cross-referenced with footprint energies.
+#
+# INPUT:  05_results/{campaign_id}/01c_dock6_run/
+#         05_results/{campaign_id}/00b_receptor_preparation/rec_noH.pdb
+#         05_results/{campaign_id}/05_dock6/04b_footprint_analysis/ (optional)
+# OUTPUT: 05_results/{campaign_id}/05_dock6/04d_contact_mapping/
+#
+# Project: molecular_docking
+# Module: 04d (DOCK6 analysis)
+# Version: 1.0 (2026-03-22)
+# =============================================================================
+
+parameters:
+  # Distance cutoff for geometric contacts (Angstroms)
+  contact_cutoff: 4.5
+
+  log_level: "INFO"
+
+outputs:
+  subdir: "05_dock6/04d_contact_mapping"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/04d_contact_mapping.py \
+#     --config 03_configs/04d_contact_mapping.yaml \
+#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+# =============================================================================

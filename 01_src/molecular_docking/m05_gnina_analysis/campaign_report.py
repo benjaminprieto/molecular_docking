@@ -726,8 +726,8 @@ def generate_html_report(
 
     # === COMPOSITE RANKING ===
     mol_energy = df_energy.groupby('Name')['vina_mean'].sum().rename('total_vina')
-    mol_conv = df_cluster.groupby('Name')['dominant_fraction'].mean().rename('mean_conv') if not df_cluster.empty else pd.Series(dtype=float)
-    mol_min_conv = df_cluster.groupby('Name')['dominant_fraction'].min().rename('min_conv') if not df_cluster.empty else pd.Series(dtype=float)
+    mol_conv = df_cluster.groupby('Name')['dominant_fraction'].mean().rename('mean_conv') if not df_cluster.empty else pd.Series(dtype=float, name='mean_conv')
+    mol_min_conv = df_cluster.groupby('Name')['dominant_fraction'].min().rename('min_conv') if not df_cluster.empty else pd.Series(dtype=float, name='min_conv')
 
     # Key contacts (top 5 consensus residues)
     top_residues = []
@@ -742,8 +742,8 @@ def generate_html_report(
                                   (df_contacts[contact_type_col].isin(['hbond', 'strong_hbond']))]
         mol_hbonds = hbond_filt.groupby('Name')['residue_id'].nunique().rename('n_key_hbonds')
     else:
-        mol_key_contacts = pd.Series(dtype=float)
-        mol_hbonds = pd.Series(dtype=float)
+        mol_key_contacts = pd.Series(dtype=float, name='n_key_contacts')
+        mol_hbonds = pd.Series(dtype=float, name='n_key_hbonds')
 
     ranking = pd.DataFrame(mol_energy)
     ranking = ranking.join(mol_conv).join(mol_min_conv).join(mol_key_contacts).join(mol_hbonds).fillna(0)
@@ -813,6 +813,29 @@ def generate_html_report(
     # Fragment type summary
     ring_energy = df_energy[df_energy['fragment_label'].str.startswith('ring')]['vina_mean'].mean()
     linker_energy = df_energy[df_energy['fragment_label'].str.startswith('linker')]['vina_mean'].mean()
+    if pd.isna(ring_energy):
+        ring_energy = 0.0
+    if pd.isna(linker_energy):
+        linker_energy = 0.0
+
+    # === PRE-COMPUTE SAFE VALUES for HTML template ===
+    # Hotspot contacts (may be empty for small campaigns)
+    _hc = df_hotspot_contacts
+    _hc0_resid = _hc.iloc[0]['residue_id'] if len(_hc) > 0 else 'N/A'
+    _hc0_nmol = int(_hc.iloc[0]['n_molecules_contacting']) if len(_hc) > 0 else 0
+    _hc0_frac = _hc.iloc[0]['contact_fraction'] * 100 if len(_hc) > 0 else 0
+    _hc1_resid = _hc.iloc[1]['residue_id'] if len(_hc) > 1 else 'N/A'
+    _hc1_frac = _hc.iloc[1]['contact_fraction'] * 100 if len(_hc) > 1 else 0
+
+    # Top candidates (may have < 3 molecules)
+    _top_candidates_lines = []
+    for _ti in range(min(3, len(ranking))):
+        _tn = ranking.index[_ti]
+        _te = ranking['total_vina'].iloc[_ti]
+        _tc = ranking['mean_conv'].iloc[_ti]
+        _ts = ranking['composite'].iloc[_ti]
+        _top_candidates_lines.append(f"<b>{_tn}</b> (E={_te:.1f}, conv={_tc:.0%}, score={_ts:.3f})")
+    _top_candidates_str = ", ".join(_top_candidates_lines) if _top_candidates_lines else "N/A"
 
     html = f"""<!DOCTYPE html>
 <html>
@@ -942,8 +965,8 @@ Key contacts: {', '.join(top_residues[:5]) if top_residues else 'N/A'}.</p>
 
 <div class="summary-box">
     <b>Total contacts:</b> {len(df_contacts)} across {df_contacts['Name'].nunique() if not df_contacts.empty else 0} molecules<br>
-    <b>Top residue:</b> {df_hotspot_contacts.iloc[0]['residue_id'] if not df_hotspot_contacts.empty else 'N/A'}
-    ({df_hotspot_contacts.iloc[0]['n_molecules_contacting'] if not df_hotspot_contacts.empty else 0}/{n_molecules} molecules)
+    <b>Top residue:</b> {_hc0_resid}
+    ({_hc0_nmol}/{n_molecules} molecules)
 </div>
 
 <h3>Consensus Contact Residues</h3>
@@ -956,19 +979,17 @@ Key contacts: {', '.join(top_residues[:5]) if top_residues else 'N/A'}.</p>
 
 <div class="key-finding">
 <h3>Binding Site Pharmacophore</h3>
-<p>The binding site is anchored by <b>{df_hotspot_contacts.iloc[0]['residue_id'] if not df_hotspot_contacts.empty else '?'}</b>
-(contacted by {df_hotspot_contacts.iloc[0]['contact_fraction']*100:.0f}% of molecules) and
-<b>{df_hotspot_contacts.iloc[1]['residue_id'] if len(df_hotspot_contacts) > 1 else '?'}</b>
-({df_hotspot_contacts.iloc[1]['contact_fraction']*100:.0f}% of molecules).
+<p>The binding site is anchored by <b>{_hc0_resid}</b>
+(contacted by {_hc0_frac:.0f}% of molecules) and
+<b>{_hc1_resid}</b>
+({_hc1_frac:.0f}% of molecules).
 The dominant interaction type is steric complementarity (gauss2) with significant H-bonding contributions.</p>
 </div>
 
 <div class="key-finding">
 <h3>Top Candidates (Composite Ranking)</h3>
-<p>The top 3 molecules by composite score (energy + convergence + contacts) are:
-<b>{ranking.index[0]}</b> (E={ranking['total_vina'].iloc[0]:.1f}, conv={ranking['mean_conv'].iloc[0]:.0%}, score={ranking['composite'].iloc[0]:.3f}),
-<b>{ranking.index[1]}</b> (E={ranking['total_vina'].iloc[1]:.1f}, conv={ranking['mean_conv'].iloc[1]:.0%}, score={ranking['composite'].iloc[1]:.3f}), and
-<b>{ranking.index[2]}</b> (E={ranking['total_vina'].iloc[2]:.1f}, conv={ranking['mean_conv'].iloc[2]:.0%}, score={ranking['composite'].iloc[2]:.3f}).
+<p>The top {min(3, len(ranking))} molecules by composite score (energy + convergence + contacts) are:
+{_top_candidates_str}.
 Of {n_molecules} molecules, {n_strong} are strong candidates, {n_risky} have good energy but unreliable poses, and {n_weak} should be deprioritized.</p>
 </div>
 
