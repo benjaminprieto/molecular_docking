@@ -5,11 +5,11 @@
 Characterize DOCK6 binding modes per molecule.
 
 Input:  05_results/{campaign}/01c_dock6_run/
-Output: 05_results/{campaign}/05_dock6/04c_binding_modes/
+Output: 05_results/{campaign}/04_dock6_analysis/04c_binding_modes/
 
 Project: molecular_docking
 Module: 04c (DOCK6 analysis)
-Version: 1.0 (2026-03-22)
+Version: 1.1 (2026-03-23) — path fix: 05_dock6 → 04_dock6_analysis
 """
 
 import argparse
@@ -64,8 +64,8 @@ def main():
         campaign_id = cc.get("campaign_id", Path(args.campaign).parent.name)
         base = Path("05_results") / campaign_id
         docking_dir = str(base / "01c_dock6_run")
-        output_dir = str(base / "05_dock6" / "04c_binding_modes")
-        footprint_csv = str(base / "05_dock6" / "04b_footprint_analysis" / "footprint_per_molecule.csv")
+        output_dir = str(base / "04_dock6_analysis" / "04c_binding_modes")
+        footprint_csv = str(base / "04_dock6_analysis" / "04b_footprint_analysis" / "footprint_per_molecule.csv")
 
     if args.config:
         mc = load_yaml(args.config)
@@ -85,7 +85,7 @@ def main():
         return 1
 
     if not output_dir:
-        output_dir = "05_results/05_dock6/04c_binding_modes"
+        output_dir = "05_results/04_dock6_analysis/04c_binding_modes"
 
     if log_level:
         logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))

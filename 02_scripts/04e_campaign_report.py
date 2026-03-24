@@ -4,12 +4,12 @@
 ===================================
 HTML report with composite ranking from 04a-04d.
 
-Input:  05_results/{campaign}/05_dock6/04a-04d outputs
-Output: 05_results/{campaign}/05_dock6/04e_campaign_report/
+Input:  05_results/{campaign}/04_dock6_analysis/04a-04d outputs
+Output: 05_results/{campaign}/04_dock6_analysis/04e_campaign_report/
 
 Project: molecular_docking
 Module: 04e (DOCK6 analysis)
-Version: 1.0 (2026-03-22)
+Version: 1.1 (2026-03-23) — path fix: 05_dock6 → 04_dock6_analysis
 """
 
 import argparse
@@ -46,7 +46,7 @@ def main():
     parser.add_argument("--config", "-c", type=str, help="Module config YAML")
     parser.add_argument("--campaign", type=str, help="Campaign config YAML")
     parser.add_argument("--results-base", type=str, default=None,
-                        help="Base dir with 04a-04d outputs (05_dock6/)")
+                        help="Base dir with 04a-04d outputs (04_dock6_analysis/)")
     parser.add_argument("--output", "-o", type=str, default=None)
     parser.add_argument("--log-level", type=str, default=None)
 
@@ -61,7 +61,7 @@ def main():
     if args.campaign:
         cc = load_yaml(args.campaign)
         campaign_id = cc.get("campaign_id", Path(args.campaign).parent.name)
-        base = Path("05_results") / campaign_id / "05_dock6"
+        base = Path("05_results") / campaign_id / "04_dock6_analysis"
         results_base = str(base)
         output_dir = str(base / "04e_campaign_report")
 
@@ -83,11 +83,11 @@ def main():
         logger.error(f"Results base not found: {results_base}")
         logger.error("Run modules 04a-04d first.")
         return 1
-    if not output_dir:
-        output_dir = "05_results/05_dock6/04e_campaign_report"
 
-    if log_level:
-        logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
+    if not output_dir:
+        output_dir = str(Path(results_base) / "04e_campaign_report")
+
+    logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
     setup_log_file(Path(output_dir) / "04e_campaign_report.log", log_level)
 
     logger.info("=" * 60)
@@ -106,7 +106,6 @@ def main():
         logger.error(f"Error: {result.get('error')}")
         return 1
 
-    logger.info(f"\n  Report ready: {result['campaign_report_html']}")
     return 0
 
 

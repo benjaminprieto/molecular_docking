@@ -3,12 +3,12 @@
 # =============================================================================
 # Ranks molecules by Grid_Score, decomposes into vdW + ES.
 #
-# INPUT:  05_results/{campaign_id}/01d_score_collection/dock6_all_poses.csv
-# OUTPUT: 05_results/{campaign_id}/05_dock6/04a_score_ranking/
+# INPUT:  05_results/{campaign_id}/01e_score_collection/dock6_all_poses.csv
+# OUTPUT: 05_results/{campaign_id}/04_dock6_analysis/04a_score_ranking/
 #
 # Project: molecular_docking
 # Module: 04a (DOCK6 analysis)
-# Version: 1.0 (2026-03-22)
+# Version: 1.1 (2026-03-23) — path fix: 05_dock6 → 04_dock6_analysis
 # =============================================================================
 
 parameters:
@@ -21,12 +21,12 @@ parameters:
   log_level: "INFO"
 
 outputs:
-  subdir: "05_dock6/04a_score_ranking"
+  subdir: "04_dock6_analysis/04a_score_ranking"
 
 # =============================================================================
 # USAGE
 # =============================================================================
 # python 02_scripts/04a_score_ranking.py \
 #     --config 03_configs/04a_score_ranking.yaml \
-#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
 # =============================================================================

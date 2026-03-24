@@ -4,12 +4,12 @@
 ================================
 Rank molecules by Grid_Score and decompose into vdW + ES.
 
-Input:  05_results/{campaign}/01d_score_collection/dock6_all_poses.csv
-Output: 05_results/{campaign}/05_dock6/04a_score_ranking/
+Input:  05_results/{campaign}/01e_score_collection/dock6_all_poses.csv
+Output: 05_results/{campaign}/04_dock6_analysis/04a_score_ranking/
 
 Project: molecular_docking
 Module: 04a (DOCK6 analysis)
-Version: 1.0 (2026-03-22)
+Version: 1.1 (2026-03-23) — path fix: 05_dock6 → 04_dock6_analysis
 """
 
 import argparse
@@ -66,10 +66,10 @@ def main():
         cc = load_yaml(args.campaign)
         campaign_id = cc.get("campaign_id", Path(args.campaign).parent.name)
         all_poses_csv = str(
-            Path("05_results") / campaign_id / "01d_score_collection" / "dock6_all_poses.csv"
+            Path("05_results") / campaign_id / "01e_score_collection" / "dock6_all_poses.csv"
         )
         output_dir = str(
-            Path("05_results") / campaign_id / "05_dock6" / "04a_score_ranking"
+            Path("05_results") / campaign_id / "04_dock6_analysis" / "04a_score_ranking"
         )
 
     # --- Module config ---
@@ -91,19 +91,16 @@ def main():
         log_level = args.log_level
 
     if not all_poses_csv or not Path(all_poses_csv).exists():
-        logger.error(f"All-poses CSV not found: {all_poses_csv}")
-        logger.error("Run module 01d first, or pass --all-poses")
+        logger.error(f"All poses CSV not found: {all_poses_csv}")
+        logger.error("Run module 01e first.")
         return 1
 
     if not output_dir:
-        output_dir = "05_results/05_dock6/04a_score_ranking"
+        output_dir = "05_results/04_dock6_analysis/04a_score_ranking"
 
-    # --- Logging ---
-    if log_level:
-        logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
+    logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
     setup_log_file(Path(output_dir) / "04a_score_ranking.log", log_level)
 
-    # --- Execute ---
     logger.info("=" * 60)
     logger.info("  MOLECULAR_DOCKING — Module 04a: DOCK6 Score Ranking")
     logger.info("=" * 60)

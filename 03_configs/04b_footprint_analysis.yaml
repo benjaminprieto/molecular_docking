@@ -7,15 +7,15 @@
 #
 # INPUT:  05_results/{campaign_id}/01c_dock6_run/{name}/{name}_scored.mol2
 #         05_results/{campaign_id}/00b_receptor_preparation/rec_charged.mol2
-#         05_results/{campaign_id}/01d_score_collection/best_poses/ (reference)
-# OUTPUT: 05_results/{campaign_id}/05_dock6/04b_footprint_rescore/
-#         05_results/{campaign_id}/05_dock6/04b_footprint_analysis/
+#         05_results/{campaign_id}/01e_score_collection/best_poses/ (reference)
+# OUTPUT: 05_results/{campaign_id}/04_dock6_analysis/04b_footprint_rescore/
+#         05_results/{campaign_id}/04_dock6_analysis/04b_footprint_analysis/
 #
 # REFERENCE: Balius et al. J Chem Inf Model 2011, 51(8):1942-56
 #
 # Project: molecular_docking
 # Module: 04b (DOCK6 analysis)
-# Version: 1.0 (2026-03-22)
+# Version: 1.1 (2026-03-23) — path fix: 05_dock6 → 04_dock6_analysis
 # =============================================================================
 
 parameters:
@@ -37,8 +37,8 @@ parameters:
   log_level: "INFO"
 
 outputs:
-  rescore_subdir: "05_dock6/04b_footprint_rescore"
-  analysis_subdir: "05_dock6/04b_footprint_analysis"
+  rescore_subdir: "04_dock6_analysis/04b_footprint_rescore"
+  analysis_subdir: "04_dock6_analysis/04b_footprint_analysis"
 
 # =============================================================================
 # USAGE
@@ -46,7 +46,7 @@ outputs:
 # # Full pipeline (rescore + analyze):
 # python 02_scripts/04b_footprint_analysis.py \
 #     --config 03_configs/04b_footprint_analysis.yaml \
-#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
 #
 # # Phase 1 only (generate re-scoring inputs, test with --dry-run):
 # python 02_scripts/04b_footprint_analysis.py \

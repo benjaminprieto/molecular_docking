@@ -5,11 +5,11 @@
 Distance-based contacts cross-referenced with footprint energies.
 
 Input:  01c_dock6_run/, 00b receptor, 04b footprint (optional)
-Output: 05_results/{campaign}/05_dock6/04d_contact_mapping/
+Output: 05_results/{campaign}/04_dock6_analysis/04d_contact_mapping/
 
 Project: molecular_docking
 Module: 04d (DOCK6 analysis)
-Version: 1.0 (2026-03-22)
+Version: 1.1 (2026-03-23) — path fix: 05_dock6 → 04_dock6_analysis
 """
 
 import argparse
@@ -70,9 +70,9 @@ def main():
         campaign_id = cc.get("campaign_id", Path(args.campaign).parent.name)
         base = Path("05_results") / campaign_id
         docking_dir = str(base / "01c_dock6_run")
-        output_dir = str(base / "05_dock6" / "04d_contact_mapping")
-        all_poses_csv = str(base / "01d_score_collection" / "dock6_all_poses.csv")
-        footprint_csv = str(base / "05_dock6" / "04b_footprint_analysis" / "footprint_per_molecule.csv")
+        output_dir = str(base / "04_dock6_analysis" / "04d_contact_mapping")
+        all_poses_csv = str(base / "01e_score_collection" / "dock6_all_poses.csv")
+        footprint_csv = str(base / "04_dock6_analysis" / "04b_footprint_analysis" / "footprint_per_molecule.csv")
 
         # Receptor: try PDB first (from 00b), then mol2
         rec_pdb = base / "00b_receptor_preparation" / "rec_noH.pdb"
@@ -109,11 +109,11 @@ def main():
     if not receptor_path or not Path(receptor_path).exists():
         logger.error(f"Receptor not found: {receptor_path}")
         return 1
-    if not output_dir:
-        output_dir = "05_results/05_dock6/04d_contact_mapping"
 
-    if log_level:
-        logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
+    if not output_dir:
+        output_dir = "05_results/04_dock6_analysis/04d_contact_mapping"
+
+    logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
     setup_log_file(Path(output_dir) / "04d_contact_mapping.log", log_level)
 
     logger.info("=" * 60)
@@ -126,11 +126,11 @@ def main():
 
     result = run_contact_mapping(
         docking_dir=docking_dir,
-        receptor_path=receptor_path,
         output_dir=output_dir,
+        receptor_path=receptor_path,
         footprint_csv=fp_csv,
-        contact_cutoff=contact_cutoff,
         all_poses_csv=ap_csv,
+        contact_cutoff=contact_cutoff,
     )
 
     if not result.get("success"):

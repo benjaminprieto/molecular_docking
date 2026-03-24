@@ -3,12 +3,12 @@
 # =============================================================================
 # HTML report with composite ranking from 04a-04d.
 #
-# INPUT:  05_results/{campaign_id}/05_dock6/04a-04d outputs
-# OUTPUT: 05_results/{campaign_id}/05_dock6/04e_campaign_report/
+# INPUT:  05_results/{campaign_id}/04_dock6_analysis/04a-04d outputs
+# OUTPUT: 05_results/{campaign_id}/04_dock6_analysis/04e_campaign_report/
 #
 # Project: molecular_docking
 # Module: 04e (DOCK6 analysis)
-# Version: 1.0 (2026-03-22)
+# Version: 1.1 (2026-03-23) — path fix: 05_dock6 → 04_dock6_analysis
 # =============================================================================
 
 parameters:
@@ -22,12 +22,12 @@ parameters:
   log_level: "INFO"
 
 outputs:
-  subdir: "05_dock6/04e_campaign_report"
+  subdir: "04_dock6_analysis/04e_campaign_report"
 
 # =============================================================================
 # USAGE
 # =============================================================================
 # python 02_scripts/04e_campaign_report.py \
 #     --config 03_configs/04e_campaign_report.yaml \
-#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
 # =============================================================================

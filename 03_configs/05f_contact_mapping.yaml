@@ -1,5 +1,5 @@
 # =============================================================================
-# 05f Contact Mapping - Configuration (molecular_docking v2.0)
+# 05f Contact Mapping - Configuration (molecular_docking v2.1)
 # =============================================================================
 # Identifies receptor residues contacted by each fragment cluster.
 # Aggregates contacts per hotspot to find consensus interactions.
@@ -7,7 +7,7 @@
 # INPUT:
 #   05a (parse_and_fragment), 05b (fragment_clustering)
 #   05d (binding_site_hotspots) — optional, for hotspot contact aggregation
-#   Receptor PDB — required (--receptor flag)
+#   Receptor PDB — resolved from campaign_config.yaml (or --receptor override)
 #
 # OUTPUT: 05_results/{campaign_id}/05f_contact_mapping/
 #   {name}_contacts.json   — per-molecule contacts
@@ -22,7 +22,7 @@
 #
 # Project: molecular_docking
 # Module: 05f
-# Version: 2.0
+# Version: 2.1
 # =============================================================================
 
 parameters:
@@ -33,14 +33,22 @@ parameters:
   # Max clusters per fragment to analyze
   max_clusters_per_fragment: 3
 
+  # Receptor PDB path (null = resolve from campaign_config.yaml)
+  receptor_path: null
+
   log_level: "INFO"
 
 outputs:
   subdir: "05f_contact_mapping"
 
 # =============================================================================
-# USAGE
+# USAGE (--receptor is optional, resolved from campaign_config.yaml)
 # =============================================================================
+# python 02_scripts/05f_contact_mapping.py \
+#     --config 03_configs/05f_contact_mapping.yaml \
+#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
+#
+# # With explicit receptor override:
 # python 02_scripts/05f_contact_mapping.py \
 #     --config 03_configs/05f_contact_mapping.yaml \
 #     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml \

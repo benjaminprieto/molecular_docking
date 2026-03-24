@@ -4,36 +4,39 @@ Footprint Analysis - Core Module (04b)
 Per-residue vdW + ES energy decomposition via DOCK6 footprint scoring.
 
 Pipeline:
-    Step 1: Re-score existing poses with footprint_similarity_score_primary
-            (calls dock6_runner.run_footprint_rescoring — fast, no re-docking)
-    Step 2: Parse per-residue vdW + ES from re-scored mol2 headers
+    Step 1: Build residue mapping (mol2 sequential → PDB original numbering)
+    Step 2: Parse per-residue vdW + ES from footprint TXT files
     Step 3: Cross-molecule consensus (which residues always contribute)
     Step 4: Compare each molecule's footprint vs reference (UDX)
 
-DOCK6 footprint output format (in scored mol2 header):
-    ##########  FPS_vdw_<RES><NUM>.<CHAIN>:  <value>
-    ##########  FPS_es_<RES><NUM>.<CHAIN>:   <value>
-    ##########  FPS.vdw_<RES><NUM>.<CHAIN>:  <value>  (reference)
-    ##########  FPS.es_<RES><NUM>.<CHAIN>:   <value>  (reference)
+DOCK6 6.13 footprint output format:
+    - {name}_fps_scored.mol2           → summary scores per pose
+    - {name}_fps_footprint_scored.txt  → per-residue tabular data
+    - {name}_fps_hbond_scored.txt      → H-bond details
 
-The exact format varies by DOCK6 version (6.9 vs 6.13). This parser
-handles both formats via regex.
+Residue numbering:
+    ChimeraX mol2 renumbers residues sequentially (1..N).
+    DOCK6 footprint inherits this sequential numbering.
+    This module remaps to PDB original numbering (e.g., 141→392)
+    so that footprint and contact results share the same residue IDs.
 
 Input:
-    01c_dock6_run/{name}/{name}_scored.mol2  — poses to re-score
-    00b receptor: rec_charged.mol2
-    01d best_poses: UDX best pose as reference
+    01d_footprint_rescore/{name}/{name}_fps_footprint_scored.txt
+    00b_receptor_preparation/rec_charged.mol2  (sequential numbering)
+    00b_receptor_preparation/rec_noH.pdb       (PDB numbering)
 
 Output:
-    footprint_per_molecule.csv    — residue × molecule energy matrix
+    footprint_per_molecule.csv    — residue × molecule energy matrix (PDB numbering)
     residue_consensus.csv         — which residues always contribute
     vs_reference_comparison.csv   — delta vdW/ES vs reference per residue
     pharmacophore_residues.json   — residues contacted by >80% of molecules
+    molecule_footprint_summary.csv — one row per molecule with totals
+    residue_mapping.csv           — sequential→PDB mapping for reference
 
 Location: 01_src/molecular_docking/m04_dock6_analysis/footprint_analysis.py
 Project: molecular_docking
 Module: 04b (DOCK6 analysis)
-Version: 1.0 (2026-03-22)
+Version: 3.0 (2026-03-23) — adds sequential→PDB residue remapping
 
 Reference: Balius et al. J Chem Inf Model 2011, 51(8):1942-56
 """
@@ -41,10 +44,8 @@ Reference: Balius et al. J Chem Inf Model 2011, 51(8):1942-56
 import json
 import logging
 import re
-from collections import defaultdict
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple, Union
+from typing import Dict, List, Any, Optional, Union, Tuple
 
 import numpy as np
 import pandas as pd
@@ -53,176 +54,241 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# FOOTPRINT MOL2 PARSER
+# RESIDUE MAPPING: mol2 sequential → PDB original
 # =============================================================================
 
-# Patterns for DOCK6 footprint fields in mol2 headers.
-# DOCK6 writes per-residue energies as:
-#   ##########  FPS_vdw_ALA123.A:  -2.340
-#   ##########  FPS_es_ALA123.A:   -0.123
-# Reference (ligand used as footprint reference):
-#   ##########  FPS.vdw_ALA123.A:  -1.800
-#   ##########  FPS.es_ALA123.A:   -0.090
-# Some DOCK6 versions use FPS.vdw vs FPS_vdw — we handle both.
-
-_FPS_LIGAND_VDW = re.compile(
-    r"##########\s+FPS[_.]vdw[_.]([A-Z]{1,4})(\d+)\.(\w+)\s*:\s*([-\d.eE+]+)"
-)
-_FPS_LIGAND_ES = re.compile(
-    r"##########\s+FPS[_.]es[_.]([A-Z]{1,4})(\d+)\.(\w+)\s*:\s*([-\d.eE+]+)"
-)
-_FPS_REF_VDW = re.compile(
-    r"##########\s+FPS\.vdw[_.]([A-Z]{1,4})(\d+)\.(\w+)\s*:\s*([-\d.eE+]+)"
-)
-_FPS_REF_ES = re.compile(
-    r"##########\s+FPS\.es[_.]([A-Z]{1,4})(\d+)\.(\w+)\s*:\s*([-\d.eE+]+)"
-)
-
-# Also match the Euclidean distance score
-_FPS_EUCLIDEAN = re.compile(
-    r"##########\s+FPS_Score\s*:\s*([-\d.eE+]+)"
-)
-# Alternative: FPS_vdw_score, FPS_es_score
-_FPS_VDW_SCORE = re.compile(
-    r"##########\s+FPS[_.]vdw[_.]?[Ss]core\s*:\s*([-\d.eE+]+)"
-)
-_FPS_ES_SCORE = re.compile(
-    r"##########\s+FPS[_.]es[_.]?[Ss]core\s*:\s*([-\d.eE+]+)"
-)
-
-# Standard DOCK6 header fields
-_HEADER_PATTERN = re.compile(
-    r"##########\s+(\S+)\s*:\s*(.*)"
-)
-
-
-def parse_footprint_mol2(mol2_path: str) -> List[Dict[str, Any]]:
+def build_residue_mapping(
+        receptor_mol2: str,
+        receptor_pdb: str,
+) -> Dict[str, str]:
     """
-    Parse a DOCK6 footprint-scored mol2 file.
+    Build mapping from mol2 sequential numbering to PDB original numbering.
 
-    Returns a list of poses, each with:
-        - name: molecule name
-        - pose_id: 0-indexed pose number
-        - header_fields: dict of standard DOCK6 header fields
-        - fps_score: Euclidean footprint distance (float or None)
-        - residue_footprint: list of dicts per residue:
-            {residue_name, residue_number, chain, residue_id,
-             vdw, es, total, ref_vdw, ref_es, ref_total,
-             delta_vdw, delta_es, delta_total}
+    ChimeraX mol2 SUBSTRUCTURE section lists residues sequentially (1..N).
+    PDB CA atoms list residues with original numbering + chain.
+    Both have the same number of residues in the same order.
+
+    Returns:
+        Dict mapping "RESseq" → "RES_pdbnum.chain"
+        e.g., {"TRP141" → "TRP392.A", "HIS84" → "HIS335.A"}
     """
-    with open(mol2_path, "r") as f:
+    # --- Parse mol2 SUBSTRUCTURE ---
+    mol2_residues = []  # list of (seq_id, resname)
+    with open(receptor_mol2, "r") as f:
+        in_substructure = False
+        for line in f:
+            if "@<TRIPOS>SUBSTRUCTURE" in line:
+                in_substructure = True
+                continue
+            if in_substructure:
+                if line.startswith("@"):
+                    break
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    try:
+                        seq_id = int(parts[0])
+                        resname = parts[1]
+                        mol2_residues.append((seq_id, resname))
+                    except (ValueError, IndexError):
+                        continue
+
+    # --- Parse PDB CA atoms ---
+    pdb_residues = []  # list of (resname, resid, chain)
+    with open(receptor_pdb, "r") as f:
+        for line in f:
+            if (line.startswith("ATOM") or line.startswith("HETATM")) and " CA " in line:
+                resname = line[17:20].strip()
+                chain = line[21].strip() or "A"
+                try:
+                    resid = int(line[22:26].strip())
+                except ValueError:
+                    continue
+                pdb_residues.append((resname, resid, chain))
+
+    # --- Build mapping ---
+    if len(mol2_residues) != len(pdb_residues):
+        logger.warning(f"  Residue count mismatch: mol2={len(mol2_residues)}, PDB={len(pdb_residues)}")
+        logger.warning("  Falling back to sequential numbering (no remapping)")
+        return {}
+
+    mapping = {}
+    mismatches = 0
+    for (seq_id, mol2_name), (pdb_name, pdb_resid, chain) in zip(mol2_residues, pdb_residues):
+        # Verify residue names match
+        if mol2_name[:3].upper() != pdb_name[:3].upper():
+            mismatches += 1
+            if mismatches <= 3:
+                logger.warning(f"  Residue name mismatch at seq={seq_id}: "
+                               f"mol2={mol2_name}, PDB={pdb_name}{pdb_resid}.{chain}")
+
+        seq_key = f"{mol2_name}{seq_id}"
+        pdb_key = f"{pdb_name}{pdb_resid}.{chain}"
+        mapping[seq_key] = pdb_key
+
+    if mismatches > 3:
+        logger.warning(f"  ... and {mismatches - 3} more mismatches")
+    if mismatches > len(mol2_residues) * 0.1:
+        logger.error(f"  Too many mismatches ({mismatches}/{len(mol2_residues)}), disabling remapping")
+        return {}
+
+    logger.info(f"  Residue mapping: {len(mapping)} residues (mol2 sequential → PDB original)")
+    return mapping
+
+
+# =============================================================================
+# FOOTPRINT TXT PARSER (per-residue tabular data)
+# =============================================================================
+
+def parse_footprint_txt(
+        txt_path: str,
+        residue_mapping: Optional[Dict[str, str]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Parse a DOCK6 footprint TXT file (*_fps_footprint_scored.txt).
+
+    Applies residue_mapping to convert sequential→PDB numbering if provided.
+
+    Returns:
+        List of pose dicts, each with:
+            - pose_id (int)
+            - fps_score, fps_vdw_energy, fps_es_energy (float or None)
+            - residue_footprint: list of per-residue dicts
+    """
+    with open(txt_path, "r") as f:
         content = f.read()
 
-    # Split into MOLECULE blocks
-    blocks = content.split("@<TRIPOS>MOLECULE")
-    if len(blocks) < 2:
-        logger.warning(f"  No MOLECULE blocks in {mol2_path}")
-        return []
+    # Split into pose blocks by the "### Molecule:" separator
+    blocks = re.split(r"#{20,}\s*\n\s*###\s+Molecule:", content)
 
     poses = []
 
-    for block_idx, block in enumerate(blocks[1:], 0):
+    for block_idx, block in enumerate(blocks):
+        # Skip preamble before first molecule
+        if block_idx == 0 and "resname" not in block:
+            continue
+
         lines = block.strip().split("\n")
-        mol_name = lines[0].strip() if lines else f"pose_{block_idx}"
 
-        # Collect header fields from ## lines
-        header_fields = {}
-        for line in lines:
-            m = _HEADER_PATTERN.match(line)
-            if m:
-                key, val = m.group(1), m.group(2).strip()
-                try:
-                    header_fields[key] = float(val)
-                except ValueError:
-                    header_fields[key] = val
-
-        # Parse FPS score
+        # --- Parse summary fields from ## lines ---
         fps_score = None
-        fps_vdw_score = None
-        fps_es_score = None
-        for line in lines:
-            m = _FPS_EUCLIDEAN.match(line)
-            if m:
-                fps_score = float(m.group(1))
-            m = _FPS_VDW_SCORE.match(line)
-            if m:
-                fps_vdw_score = float(m.group(1))
-            m = _FPS_ES_SCORE.match(line)
-            if m:
-                fps_es_score = float(m.group(1))
-
-        # Parse per-residue footprint
-        ligand_vdw = {}  # {res_id: value}
-        ligand_es = {}
-        ref_vdw = {}
-        ref_es = {}
+        fps_vdw_energy = None
+        fps_es_energy = None
+        fps_vdw_es_energy = None
+        fps_num_hbond = None
 
         for line in lines:
-            # Ligand vdW (try ligand-specific pattern first, excluding ref pattern)
-            # We need to be careful: FPS.vdw is reference, FPS_vdw is ligand
-            m = _FPS_LIGAND_VDW.match(line)
-            if m and not line.strip().startswith("##########  FPS.vdw"):
-                res_name, res_num, chain = m.group(1), m.group(2), m.group(3)
-                res_id = f"{res_name}{res_num}.{chain}"
-                ligand_vdw[res_id] = float(m.group(4))
+            line_s = line.strip()
+            if "Footprint_Similarity_Score:" in line_s:
+                try:
+                    fps_score = float(line_s.split(":")[-1].strip())
+                except ValueError:
+                    pass
+            elif "FPS_vdw_energy:" in line_s:
+                try:
+                    fps_vdw_energy = float(line_s.split(":")[-1].strip())
+                except ValueError:
+                    pass
+            elif "FPS_es_energy:" in line_s:
+                try:
+                    fps_es_energy = float(line_s.split(":")[-1].strip())
+                except ValueError:
+                    pass
+            elif "FPS_vdw+es_energy:" in line_s:
+                try:
+                    fps_vdw_es_energy = float(line_s.split(":")[-1].strip())
+                except ValueError:
+                    pass
+            elif "FPS_num_hbond:" in line_s:
+                try:
+                    fps_num_hbond = int(line_s.split(":")[-1].strip())
+                except ValueError:
+                    pass
 
-            m = _FPS_LIGAND_ES.match(line)
-            if m and not line.strip().startswith("##########  FPS.es"):
-                res_name, res_num, chain = m.group(1), m.group(2), m.group(3)
-                res_id = f"{res_name}{res_num}.{chain}"
-                ligand_es[res_id] = float(m.group(4))
-
-            # Reference vdW/ES
-            m = _FPS_REF_VDW.match(line)
-            if m:
-                res_name, res_num, chain = m.group(1), m.group(2), m.group(3)
-                res_id = f"{res_name}{res_num}.{chain}"
-                ref_vdw[res_id] = float(m.group(4))
-
-            m = _FPS_REF_ES.match(line)
-            if m:
-                res_name, res_num, chain = m.group(1), m.group(2), m.group(3)
-                res_id = f"{res_name}{res_num}.{chain}"
-                ref_es[res_id] = float(m.group(4))
-
-        # Combine residue data
-        all_residues = set(ligand_vdw) | set(ligand_es) | set(ref_vdw) | set(ref_es)
+        # --- Parse per-residue tabular data ---
         residue_footprint = []
+        in_table = False
 
-        for res_id in sorted(all_residues):
-            # Parse residue_id back to components
-            m_res = re.match(r"([A-Z]{1,4})(\d+)\.(\w+)", res_id)
-            if not m_res:
+        for line in lines:
+            line_s = line.strip()
+
+            # Detect header row
+            if line_s.startswith("resname") and "resid" in line_s:
+                in_table = True
                 continue
 
-            vdw_val = ligand_vdw.get(res_id, 0.0)
-            es_val = ligand_es.get(res_id, 0.0)
-            rvdw = ref_vdw.get(res_id, 0.0)
-            res_val = ref_es.get(res_id, 0.0)
+            # Detect end of table (empty line or new ## block)
+            if in_table and (not line_s or line_s.startswith("#")):
+                in_table = False
+                continue
 
-            residue_footprint.append({
-                "residue_id": res_id,
-                "residue_name": m_res.group(1),
-                "residue_number": int(m_res.group(2)),
-                "chain": m_res.group(3),
-                "vdw": round(vdw_val, 4),
-                "es": round(es_val, 4),
-                "total": round(vdw_val + es_val, 4),
-                "ref_vdw": round(rvdw, 4),
-                "ref_es": round(res_val, 4),
-                "ref_total": round(rvdw + res_val, 4),
-                "delta_vdw": round(vdw_val - rvdw, 4),
-                "delta_es": round(es_val - res_val, 4),
-                "delta_total": round((vdw_val + es_val) - (rvdw + res_val), 4),
-            })
+            if in_table:
+                parts = line_s.split()
+                if len(parts) >= 8:
+                    try:
+                        resname = parts[0]
+                        resid = int(parts[1])
+                        vdw_ref = float(parts[2])
+                        es_ref = float(parts[3])
+                        hb_ref = int(float(parts[4]))
+                        vdw_pose = float(parts[5])
+                        es_pose = float(parts[6])
+                        hb_pose = int(float(parts[7]))
 
+                        # Sequential key (from DOCK6 output)
+                        seq_key = f"{resname}{resid}"
+
+                        # Remap to PDB numbering if mapping available
+                        if residue_mapping and seq_key in residue_mapping:
+                            residue_id = residue_mapping[seq_key]
+                            # Parse PDB residue_id back to components
+                            m_pdb = re.match(r"([A-Z]{1,4})(\d+)\.(\w+)", residue_id)
+                            if m_pdb:
+                                resname_out = m_pdb.group(1)
+                                resid_out = int(m_pdb.group(2))
+                                chain_out = m_pdb.group(3)
+                            else:
+                                resname_out = resname
+                                resid_out = resid
+                                chain_out = "A"
+                                residue_id = f"{resname}{resid}.A"
+                        else:
+                            resname_out = resname
+                            resid_out = resid
+                            chain_out = "A"
+                            residue_id = f"{resname}{resid}.A"
+
+                        total_pose = vdw_pose + es_pose
+                        total_ref = vdw_ref + es_ref
+
+                        residue_footprint.append({
+                            "residue_id": residue_id,
+                            "residue_name": resname_out,
+                            "residue_number": resid_out,
+                            "chain": chain_out,
+                            "vdw": round(vdw_pose, 6),
+                            "es": round(es_pose, 6),
+                            "total": round(total_pose, 6),
+                            "ref_vdw": round(vdw_ref, 6),
+                            "ref_es": round(es_ref, 6),
+                            "ref_total": round(total_ref, 6),
+                            "delta_vdw": round(vdw_pose - vdw_ref, 6),
+                            "delta_es": round(es_pose - es_ref, 6),
+                            "delta_total": round(total_pose - total_ref, 6),
+                            "hb_pose": hb_pose,
+                            "hb_ref": hb_ref,
+                        })
+                    except (ValueError, IndexError) as e:
+                        logger.debug(f"  Skipping malformed line: {line_s} ({e})")
+                        continue
+
+        pose_id = block_idx if block_idx > 0 else 0
         poses.append({
-            "name": mol_name,
-            "pose_id": block_idx,
-            "header_fields": header_fields,
+            "pose_id": pose_id,
             "fps_score": fps_score,
-            "fps_vdw_score": fps_vdw_score,
-            "fps_es_score": fps_es_score,
+            "fps_vdw_energy": fps_vdw_energy,
+            "fps_es_energy": fps_es_energy,
+            "fps_vdw_es_energy": fps_vdw_es_energy,
+            "fps_num_hbond": fps_num_hbond,
             "residue_footprint": residue_footprint,
             "n_residues": len(residue_footprint),
         })
@@ -237,6 +303,8 @@ def parse_footprint_mol2(mol2_path: str) -> List[Dict[str, Any]]:
 def run_footprint_analysis(
         footprint_dir: Union[str, Path],
         output_dir: Union[str, Path],
+        receptor_mol2: Optional[str] = None,
+        receptor_pdb: Optional[str] = None,
         pharmacophore_threshold: float = 0.8,
         energy_cutoff: float = -0.5,
         best_pose_only: bool = True,
@@ -244,17 +312,14 @@ def run_footprint_analysis(
     """
     Analyze DOCK6 footprint re-scoring results.
 
-    Reads footprint-scored mol2 files (from dock6_runner.run_footprint_rescoring)
-    and produces per-residue energy analysis, consensus, and reference comparison.
-
     Args:
-        footprint_dir:  Directory with {name}/{name}_footprint_scored.mol2
+        footprint_dir:  Directory with {name}/{name}_fps_footprint_scored.txt
         output_dir:     Output directory for analysis files
+        receptor_mol2:  Path to rec_charged.mol2 (sequential numbering, for mapping)
+        receptor_pdb:   Path to rec_noH.pdb (PDB original numbering, for mapping)
         pharmacophore_threshold: Fraction of molecules that must contact a residue
-                                 for it to be pharmacophoric (default: 0.8)
         energy_cutoff:  Minimum total energy for a residue to count as "contributing"
-                        (kcal/mol, must be more negative than this)
-        best_pose_only: If True, analyze only best pose per molecule (by FPS_Score)
+        best_pose_only: If True, analyze only best pose per molecule
 
     Returns:
         Dict with: success, n_molecules, output paths
@@ -264,10 +329,28 @@ def run_footprint_analysis(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("=" * 60)
-    logger.info("  04b DOCK6 Footprint Analysis v1.0")
+    logger.info("  04b DOCK6 Footprint Analysis v3.0")
     logger.info("=" * 60)
 
-    # --- Find footprint-scored mol2 files ---
+    # --- Build residue mapping ---
+    residue_mapping = {}
+    if receptor_mol2 and receptor_pdb and Path(receptor_mol2).exists() and Path(receptor_pdb).exists():
+        logger.info(f"  Building residue mapping (mol2 → PDB)...")
+        residue_mapping = build_residue_mapping(receptor_mol2, receptor_pdb)
+        if residue_mapping:
+            # Save mapping for reference
+            mapping_csv = output_dir / "residue_mapping.csv"
+            mapping_rows = []
+            for seq_key, pdb_key in sorted(residue_mapping.items(),
+                                            key=lambda x: int(re.search(r'\d+', x[0]).group())):
+                mapping_rows.append({"mol2_sequential": seq_key, "pdb_original": pdb_key})
+            pd.DataFrame(mapping_rows).to_csv(mapping_csv, index=False)
+            logger.info(f"  Saved: {mapping_csv}")
+    else:
+        logger.warning("  No receptor mol2/PDB provided — using sequential numbering")
+        logger.warning("  (Residue IDs will NOT match contact mapping)")
+
+    # --- Find molecule directories ---
     mol_dirs = sorted([
         d for d in footprint_dir.iterdir()
         if d.is_dir() and not d.name.startswith(".")
@@ -280,13 +363,28 @@ def run_footprint_analysis(
 
     for d in mol_dirs:
         name = d.name
-        fps_mol2 = d / f"{name}_footprint_scored.mol2"
-        if not fps_mol2.exists():
+
+        # --- Find footprint TXT file ---
+        fps_txt = d / f"{name}_fps_footprint_scored.txt"
+        if not fps_txt.exists():
+            txt_candidates = list(d.glob("*_fps_footprint_scored.txt"))
+            if txt_candidates:
+                fps_txt = txt_candidates[0]
+            else:
+                logger.debug(f"  No footprint TXT found for {name}, skipping")
+                n_failed += 1
+                continue
+
+        poses = parse_footprint_txt(str(fps_txt), residue_mapping=residue_mapping)
+        if not poses:
+            logger.warning(f"  No poses parsed from TXT: {name}")
+            n_failed += 1
             continue
 
-        poses = parse_footprint_mol2(str(fps_mol2))
+        # Filter out empty poses
+        poses = [p for p in poses if p["residue_footprint"]]
         if not poses:
-            logger.warning(f"  No poses parsed: {name}")
+            logger.warning(f"  No residue data in any pose: {name}")
             n_failed += 1
             continue
 
@@ -300,8 +398,8 @@ def run_footprint_analysis(
 
         for pose in poses:
             fps_score = pose.get("fps_score")
-            fps_vdw = pose.get("fps_vdw_score")
-            fps_es = pose.get("fps_es_score")
+            fps_vdw = pose.get("fps_vdw_energy")
+            fps_es = pose.get("fps_es_energy")
 
             for res in pose["residue_footprint"]:
                 all_rows.append({
@@ -321,8 +419,10 @@ def run_footprint_analysis(
                 "Name": name,
                 "pose_id": pose["pose_id"],
                 "fps_score": fps_score,
-                "fps_vdw_score": fps_vdw,
-                "fps_es_score": fps_es,
+                "fps_vdw_energy": fps_vdw,
+                "fps_es_energy": fps_es,
+                "fps_vdw_es_energy": pose.get("fps_vdw_es_energy"),
+                "fps_num_hbond": pose.get("fps_num_hbond"),
                 "total_vdw": round(total_vdw, 3),
                 "total_es": round(total_es, 3),
                 "total_energy": round(total_vdw + total_es, 3),
@@ -335,16 +435,13 @@ def run_footprint_analysis(
     logger.info(f"  Parsed: {n_parsed} molecules, {n_failed} failed")
 
     if not all_rows:
-        # No footprint data — may mean re-scoring hasn't been run yet
-        # or DOCK6 didn't write footprint fields. Provide diagnostic info.
-        logger.warning("  No footprint data found in any mol2 file!")
+        logger.warning("  No footprint data found in any TXT file!")
         logger.warning("  Possible causes:")
-        logger.warning("    1. Footprint re-scoring hasn't been run (run 04b with --rescore)")
-        logger.warning("    2. DOCK6 version doesn't write per-residue FPS fields")
-        logger.warning("  Check: grep -i 'FPS_vdw\\|FPS_es' <mol2_file> | head -20")
+        logger.warning("    1. Footprint re-scoring hasn't been run (run 01d first)")
+        logger.warning("    2. TXT files not generated (check write_footprints=yes)")
         return {
             "success": False,
-            "error": "No footprint data found. Run footprint re-scoring first.",
+            "error": "No footprint data found. Run 01d footprint re-scoring first.",
             "n_parsed": n_parsed,
         }
 
@@ -358,7 +455,6 @@ def run_footprint_analysis(
     logger.info(f"  Saved: {fps_csv} ({len(df_all)} rows)")
 
     # --- Residue consensus ---
-    # For each residue: how many molecules have it contributing?
     residue_stats = []
     all_names = df_all["Name"].nunique()
 
@@ -381,7 +477,6 @@ def run_footprint_analysis(
             "std_total": round(grp["total"].std(), 4) if len(grp) > 1 else 0.0,
             "min_total": round(grp["total"].min(), 4),
             "max_total": round(grp["total"].max(), 4),
-            # Reference energies (same for all molecules)
             "ref_vdw": round(grp["ref_vdw"].iloc[0], 4) if "ref_vdw" in grp.columns else 0.0,
             "ref_es": round(grp["ref_es"].iloc[0], 4) if "ref_es" in grp.columns else 0.0,
         })
@@ -394,7 +489,7 @@ def run_footprint_analysis(
     df_consensus.to_csv(consensus_csv, index=False, encoding="utf-8")
     logger.info(f"  Saved: {consensus_csv} ({len(df_consensus)} residues)")
 
-    # --- Pharmacophore residues (contacted by >threshold of molecules) ---
+    # --- Pharmacophore residues ---
     pharma = df_consensus[
         df_consensus["frac_contributing"] >= pharmacophore_threshold
     ].copy()
@@ -417,17 +512,17 @@ def run_footprint_analysis(
             "energy_cutoff": energy_cutoff,
             "n_molecules": all_names,
             "n_pharmacophore_residues": len(pharma_list),
+            "numbering": "PDB_original" if residue_mapping else "mol2_sequential",
             "residues": pharma_list,
         }, f, indent=2)
     logger.info(f"  Saved: {pharma_json} ({len(pharma_list)} pharmacophore residues)")
 
     # --- vs reference comparison ---
-    # Per-molecule delta from reference
+    ref_csv = None
     if "delta_total" in df_all.columns:
-        # Pivot: for each molecule, which residues differ most from reference?
         ref_comparison = []
         for name, grp in df_all.groupby("Name"):
-            sig = grp[grp["delta_total"].abs() > 0.5]  # significant deltas
+            sig = grp[grp["delta_total"].abs() > 0.5]
             for _, row in sig.iterrows():
                 ref_comparison.append({
                     "Name": name,
@@ -447,10 +542,7 @@ def run_footprint_analysis(
             df_ref.to_csv(ref_csv, index=False, encoding="utf-8")
             logger.info(f"  Saved: {ref_csv} ({len(df_ref)} significant deltas)")
         else:
-            ref_csv = None
             logger.info("  No significant deltas vs reference found.")
-    else:
-        ref_csv = None
 
     # --- Save molecule summary ---
     summary_csv = output_dir / "molecule_footprint_summary.csv"
@@ -461,11 +553,12 @@ def run_footprint_analysis(
     logger.info("")
     logger.info(f"  Molecules analyzed:      {n_parsed}")
     logger.info(f"  Total residues tracked:  {len(df_consensus)}")
-    logger.info(f"  Pharmacophore residues:  {len(pharma_list)} (>{pharmacophore_threshold*100:.0f}%)")
+    logger.info(f"  Pharmacophore residues:  {len(pharma_list)} (>{pharmacophore_threshold * 100:.0f}%)")
+    logger.info(f"  Numbering:               {'PDB original' if residue_mapping else 'mol2 sequential'}")
     if len(pharma_list) > 0:
         top5 = pharma_list[:5]
         for r in top5:
-            logger.info(f"    {r['residue_id']}: {r['frac_contributing']*100:.0f}% "
+            logger.info(f"    {r['residue_id']}: {r['frac_contributing'] * 100:.0f}% "
                         f"(mean={r['mean_total']:.2f} kcal/mol)")
     logger.info("=" * 60)
 
@@ -474,6 +567,7 @@ def run_footprint_analysis(
         "n_molecules": n_parsed,
         "n_residues": len(df_consensus),
         "n_pharmacophore": len(pharma_list),
+        "numbering": "PDB_original" if residue_mapping else "mol2_sequential",
         "footprint_per_molecule_csv": str(fps_csv),
         "residue_consensus_csv": str(consensus_csv),
         "pharmacophore_json": str(pharma_json),

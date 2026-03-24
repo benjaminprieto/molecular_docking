@@ -10,12 +10,17 @@ Output: 05_results/{campaign_id}/05f_contact_mapping/
 Usage:
     python 02_scripts/05f_contact_mapping.py \
         --config 03_configs/05f_contact_mapping.yaml \
+        --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
+
+    # With explicit receptor override:
+    python 02_scripts/05f_contact_mapping.py \
+        --config 03_configs/05f_contact_mapping.yaml \
         --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml \
         --receptor 04_data/campaigns/UDX_pharmit_pH63/receptor/XT1_6EJ7.pdb
 
 Project: molecular_docking
 Module: 05f
-Version: 2.0
+Version: 2.1
 """
 
 import argparse
@@ -54,8 +59,8 @@ def main():
     parser.add_argument("--config", "-c", type=str, required=True)
     parser.add_argument("--campaign", type=str, required=True)
     parser.add_argument("--output", "-o", type=str, default=None)
-    parser.add_argument("--receptor", type=str, default=None, required=True,
-                        help="Receptor PDB path")
+    parser.add_argument("--receptor", type=str, default=None,
+                        help="Receptor PDB path (resolved from campaign_config if omitted)")
     parser.add_argument("--cutoff", type=float, default=None,
                         help="Contact distance cutoff (Angstrom)")
     parser.add_argument("--name", type=str, default=None)
@@ -81,21 +86,46 @@ def main():
     cutoff = args.cutoff or params.get("cutoff", 4.5)
     max_clusters = params.get("max_clusters_per_fragment", 3)
 
+    # =========================================================================
+    # RESOLVE RECEPTOR PATH (same pattern as 05d / 05e)
+    # Priority: CLI --receptor > module config > campaign_config.yaml
+    # =========================================================================
+    receptor_path = args.receptor
+    if not receptor_path:
+        rp = params.get("receptor_path")
+        if rp:
+            receptor_path = rp
+        else:
+            rec = cc.get("receptor", {})
+            rp = rec.get("pdb") or rec.get("path")
+            if rp:
+                rpath = Path(rp) if Path(rp).is_absolute() else campaign_dir / rp
+                if rpath.exists():
+                    receptor_path = str(rpath)
+
+    if not receptor_path:
+        logger.error("Receptor PDB not specified. Provide --receptor or set receptor.pdb in campaign_config.yaml")
+        sys.exit(1)
+    if not Path(receptor_path).exists():
+        logger.error(f"Receptor PDB not found: {receptor_path}")
+        sys.exit(1)
+
     parsed_dir = str(results_base / "05a_parse_and_fragment")
     cluster_dir = str(results_base / "05b_fragment_clustering")
     hotspot_dir = str(results_base / "05d_binding_site_hotspots")
     molecule_names = [args.name] if args.name else None
 
-    logger.info(f"Campaign:  {campaign_id}")
-    logger.info(f"Receptor:  {args.receptor}")
-    logger.info(f"Cutoff:    {cutoff} A")
-    logger.info(f"Output:    {output_dir}")
+    logger.info(f"Campaign:       {campaign_id}")
+    logger.info(f"Receptor:       {receptor_path}")
+    logger.info(f"Cutoff:         {cutoff} A")
+    logger.info(f"Max clusters:   {max_clusters}")
+    logger.info(f"Output:         {output_dir}")
 
     result = run_contact_mapping(
         parsed_dir=parsed_dir,
         cluster_dir=cluster_dir,
         output_dir=str(output_dir),
-        receptor_path=args.receptor,
+        receptor_path=receptor_path,
         hotspot_dir=hotspot_dir,
         cutoff=cutoff,
         max_clusters_per_fragment=max_clusters,
