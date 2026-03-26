@@ -10,14 +10,34 @@
 #
 # Project: molecular_docking
 # Module: 01b (DOCK6)
-# Version: 2.3
+# Version: 2.4
 # =============================================================================
+#
+# ┌─────────────────────────────────────────────────────────────────────┐
+# │  ⚠️  BOX_MARGIN — REFERENCE vs SCREENING MODE                     │
+# │                                                                     │
+# │  REFERENCE (crystal footprint):  box_margin: 1.0                   │
+# │  SCREENING (virtual screening):  box_margin: 5.0                   │
+# │                                                                     │
+# │  BEFORE running, check which mode you need:                        │
+# │                                                                     │
+# │    reference → 1.0 Å  (tight box, pose ≈ crystal, real footprint) │
+# │    screening → 5.0 Å  (normal box, full conformational search)    │
+# │                                                                     │
+# │  ⚠️  RESTORE to 5.0 after reference run!                           │
+# │  ⚠️  BACKUP 01b_grid_generation/ before switching modes!           │
+# │      Output directory is shared — grids WILL be overwritten.       │
+# └─────────────────────────────────────────────────────────────────────┘
+#
 
 parameters:
   # DMS probe radius (Angstroms)
   probe_radius: 1.4
 
-  # Margin around spheres for grid box (Angstroms)
+  # ┌───────────────────────────────────────────────────┐
+  # │  box_margin: 5.0   ← SCREENING (default)         │
+  # │  box_margin: 1.0   ← REFERENCE (crystal scoring) │
+  # └───────────────────────────────────────────────────┘
   box_margin: 5.0
 
   # Grid spacing (Angstroms)
@@ -48,8 +68,28 @@ outputs:
 # =============================================================================
 # USAGE
 # =============================================================================
-# python 02_scripts/01b_grid_generation.py --config 03_configs/01b_grid_generation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
 #
-# # Force regeneration:
-# python 02_scripts/01b_grid_generation.py --config 03_configs/01b_grid_generation.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --force
+# SCREENING (normal):
+#   1. Verify box_margin: 5.0
+#   2. python 02_scripts/01b_grid_generation.py \
+#        --config 03_configs/01b_grid_generation.yaml \
+#        --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#
+# REFERENCE (crystal footprint):
+#   1. BACKUP:  cp -r 05_results/{campaign}/01b_grid_generation/ \
+#                     05_results/{campaign}/01b_grid_generation_screening_backup/
+#   2. Set box_margin: 1.0
+#   3. Run pipeline:  bash run_pipeline.sh {campaign} reference 01b
+#   4. SAVE reference results:
+#        cp -r 05_results/{campaign}/01b_grid_generation/ \
+#              05_results/{campaign}/01b_grid_generation_ref/
+#   5. RESTORE box_margin: 5.0
+#   6. RESTORE screening grids:
+#        cp -r 05_results/{campaign}/01b_grid_generation_screening_backup/ \
+#              05_results/{campaign}/01b_grid_generation/
+#
+# Force regeneration (any mode):
+#   python 02_scripts/01b_grid_generation.py \
+#     --config 03_configs/01b_grid_generation.yaml \
+#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml --force
 # =============================================================================

@@ -24,7 +24,7 @@ Saves:  {name}_scores.json   — coefficients, R², sweet spots
 Location: 01_src/molecular_docking/m05_gnina_analysis/score_decomposition.py
 Project: molecular_docking
 Module: 05c (core)
-Version: 2.1 — exact atom_terms for Vina, regression only for CNN/DOCK6 (2026-03-22)
+Version: 3.0 — proportional Vina distribution + gnina_scores.csv integration (2026-03-26)
 """
 
 import json
@@ -412,6 +412,7 @@ def _find_sweet_spots(
 
 def compute_fragment_energies(
         mol_data: MoleculeData,
+        vina_affinity: Optional[float] = None,
 ) -> Optional[FragmentEnergyResult]:
     """
     Compute exact Vina energy contribution per fragment per pose.
@@ -451,13 +452,24 @@ def compute_fragment_energies(
     # Total reconstructed Vina (should match vina_affinity closely)
     total_reconstructed = np.sum(frag_vina, axis=1)
 
+    # Proportional distribution of actual Vina affinity
+    # atom_terms_sum is intermolecular only; vina_affinity includes torsion + strain
+    proportional_vina = None
+    if vina_affinity is not None:
+        # Per-pose proportions: how much does each fragment contribute?
+        total_abs = np.sum(np.abs(frag_vina), axis=1, keepdims=True)  # (n_poses, 1)
+        # Avoid division by zero
+        safe_total = np.where(total_abs > 1e-10, total_abs, 1.0)
+        proportions = np.abs(frag_vina) / safe_total  # (n_poses, n_frags)
+        proportional_vina = vina_affinity * proportions  # (n_poses, n_frags)
+
     # Build per-fragment statistics
     fragment_energies = []
     for fi, frag in enumerate(mol_data.fragments):
         fv = frag_vina[:, fi]
         ft = frag_terms[:, fi, :]  # (n_poses, 5) — already weighted
 
-        fragment_energies.append({
+        fe_dict = {
             "fragment_id": frag.fragment_id,
             "fragment_label": frag.label,
             "n_atoms": frag.n_atoms,
@@ -473,7 +485,17 @@ def compute_fragment_energies(
             "hbond_contrib": round(float(np.mean(ft[:, 4])), 4),
             # Per-pose array for downstream use
             "per_pose_vina": fv.tolist(),
-        })
+        }
+
+        # Proportional Vina (distributes actual vina_affinity by fragment contribution)
+        if proportional_vina is not None:
+            pv = proportional_vina[:, fi]
+            fe_dict["proportional_vina_mean"] = round(float(np.mean(pv)), 4)
+            fe_dict["proportional_vina_std"] = round(float(np.std(pv)), 4)
+            fe_dict["proportional_vina_best"] = round(float(np.min(pv)), 4)
+            fe_dict["proportion_of_total"] = round(float(np.mean(proportions[:, fi])), 4)
+
+        fragment_energies.append(fe_dict)
 
     return FragmentEnergyResult(
         name=mol_data.name, n_poses=n_poses,
@@ -492,13 +514,14 @@ def decompose_molecule(
         cluster_result: MoleculeClusterResult,
         score_keys: Optional[List[str]] = None,
         n_sweet_spots: int = 10,
+        vina_affinity: Optional[float] = None,
 ) -> MoleculeScoreResult:
     """Decompose all score types for one molecule."""
     if score_keys is None:
         score_keys = mol_data.score_keys
 
     # Exact energy decomposition from atom_terms (if available)
-    energy_result = compute_fragment_energies(mol_data)
+    energy_result = compute_fragment_energies(mol_data, vina_affinity=vina_affinity)
     has_exact_vina = energy_result is not None and energy_result.has_atom_terms
 
     # Regression: skip vina_affinity if we have exact decomposition
@@ -598,6 +621,7 @@ def run_score_decomposition(
         score_keys: Optional[List[str]] = None,
         n_sweet_spots: int = 10,
         molecule_names: Optional[List[str]] = None,
+        gnina_scores_csv: Optional[str] = None,
 ) -> Dict[str, any]:
     """
     Score decomposition for all molecules.
@@ -606,13 +630,23 @@ def run_score_decomposition(
     Saves: per-molecule JSON + summary CSV
     """
     logger.info("=" * 60)
-    logger.info("05c SCORE DECOMPOSITION v2.0")
+    logger.info("05c SCORE DECOMPOSITION v3.0")
     logger.info("=" * 60)
 
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
     all_mols = load_all_molecules(parsed_dir, molecule_names)
+
+    # Load actual Vina scores from 02c
+    vina_scores = {}
+    if gnina_scores_csv and Path(gnina_scores_csv).exists():
+        df_gnina = pd.read_csv(gnina_scores_csv)
+        if 'name' in df_gnina.columns and 'vina_affinity' in df_gnina.columns:
+            df_ok = df_gnina[df_gnina['success'] == True]
+            vina_scores = dict(zip(df_ok['name'], df_ok['vina_affinity']))
+            logger.info(f"  Vina scores loaded: {len(vina_scores)} molecules from gnina_scores.csv")
+
     if not all_mols:
         logger.error("No parsed molecules found")
         return {"success": False, "error": "No data"}
@@ -632,6 +666,7 @@ def run_score_decomposition(
         try:
             mol_result = decompose_molecule(
                 mol_data, cluster_result, score_keys, n_sweet_spots,
+                vina_affinity=vina_scores.get(name),
             )
         except Exception as e:
             logger.warning(f"  {name}: decomposition failed — {e}")
@@ -682,6 +717,10 @@ def run_score_decomposition(
                     "repulsion_contrib": fe["repulsion_contrib"],
                     "hydrophobic_contrib": fe["hydrophobic_contrib"],
                     "hbond_contrib": fe["hbond_contrib"],
+                    "proportional_vina_mean": fe.get("proportional_vina_mean", None),
+                    "proportional_vina_std": fe.get("proportional_vina_std", None),
+                    "proportional_vina_best": fe.get("proportional_vina_best", None),
+                    "proportion_of_total": fe.get("proportion_of_total", None),
                 })
 
     # Summary CSV (regression-based)

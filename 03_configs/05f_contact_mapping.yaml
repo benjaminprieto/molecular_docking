@@ -1,5 +1,5 @@
 # =============================================================================
-# 05f Contact Mapping - Configuration (molecular_docking v2.1)
+# 05f Contact Mapping - Configuration (molecular_docking v3.0)
 # =============================================================================
 # Identifies receptor residues contacted by each fragment cluster.
 # Aggregates contacts per hotspot to find consensus interactions.
@@ -22,7 +22,7 @@
 #
 # Project: molecular_docking
 # Module: 05f
-# Version: 2.1
+# Version: 3.0
 # =============================================================================
 
 parameters:
@@ -35,6 +35,13 @@ parameters:
 
   # Receptor PDB path (null = resolve from campaign_config.yaml)
   receptor_path: null
+
+  # PLIP analysis for top N molecules (requires plip package)
+  plip_enabled: false
+  plip_top_n: 20
+
+  # Path to gnina_scores.csv for top N ranking (null = auto-detect)
+  gnina_scores_csv: null
 
   log_level: "INFO"
 

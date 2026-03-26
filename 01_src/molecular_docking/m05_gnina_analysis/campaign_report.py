@@ -9,13 +9,22 @@ Generates an HTML report answering the 5 key screening questions:
     4. How confident are we? → pose convergence, consensus
     5. What receptor residues matter? → contact consensus
 
-Reads: all 05a-05f outputs
+Reads: all 05a-05f outputs + gnina_scores.csv (mandatory)
 Saves: campaign_report.html + figures/ directory
 
 Location: 01_src/molecular_docking/m05_gnina_analysis/campaign_report.py
 Project: molecular_docking
 Module: 05g (core)
-Version: 1.0
+Version: 3.0
+
+CHANGES v2.0 → v3.0:
+  - NEW multiplicative composite: composite = vina_affinity × weighted_conv
+    where weighted_conv = Σ(conv_i × |prop_vina_i|) / Σ(|prop_vina_i|)
+  - gnina_scores.csv is now MANDATORY (no fallback to fragment atom_terms sum)
+  - Three main tables: Top 20 Vina raw, Top 20 Composite, Top 20 fragments
+  - Detail cards use proportional_vina_mean from fragment decomposition
+  - Contacts/H-bonds removed from composite (informational only)
+  - PLIP interaction data shown in detail cards when available
 """
 
 import json
@@ -65,12 +74,20 @@ def _fig_to_file(fig, path: Path):
 # FIGURE 1: MOLECULE RANKING
 # =============================================================================
 
-def fig_molecule_ranking(df_energy: pd.DataFrame, top_n: int = 30) -> str:
-    """Bar chart: top molecules by total Vina interaction energy."""
+def fig_molecule_ranking(df_energy: pd.DataFrame, top_n: int = 30,
+                         mol_vina_scores: Optional[pd.Series] = None) -> str:
+    """Bar chart: top molecules by Vina affinity (or fragment sum as fallback)."""
     if not HAS_MPL or df_energy.empty:
         return ""
 
-    mol_totals = df_energy.groupby('Name')['vina_mean'].sum().sort_values()
+    if mol_vina_scores is not None and not mol_vina_scores.empty:
+        mol_totals = mol_vina_scores.sort_values()
+        energy_label = 'Vina Affinity (kcal/mol)'
+        title_label = 'Vina Score'
+    else:
+        mol_totals = df_energy.groupby('Name')['vina_mean'].sum().sort_values()
+        energy_label = 'Total Vina Interaction Energy (kcal/mol)'
+        title_label = 'Binding Energy'
     top = mol_totals.head(top_n)
 
     fig, ax = plt.subplots(figsize=(10, max(6, top_n * 0.25)))
@@ -78,8 +95,8 @@ def fig_molecule_ranking(df_energy: pd.DataFrame, top_n: int = 30) -> str:
     bars = ax.barh(range(len(top)), top.values, color=colors)
     ax.set_yticks(range(len(top)))
     ax.set_yticklabels([n[:35] for n in top.index], fontsize=7)
-    ax.set_xlabel('Total Vina Interaction Energy (kcal/mol)')
-    ax.set_title(f'Top {top_n} Molecules by Binding Energy')
+    ax.set_xlabel(energy_label)
+    ax.set_title(f'Top {top_n} Molecules by {title_label}')
     ax.axvline(x=top.values.mean(), color='gray', linestyle='--', alpha=0.5,
                label=f'Mean: {top.values.mean():.1f}')
     ax.legend(fontsize=8)
@@ -137,14 +154,20 @@ def fig_fragment_breakdown(df_energy: pd.DataFrame, top_n: int = 15) -> str:
 # FIGURE 3: CONVERGENCE vs ENERGY
 # =============================================================================
 
-def fig_convergence_vs_energy(df_cluster: pd.DataFrame, df_energy: pd.DataFrame) -> str:
+def fig_convergence_vs_energy(df_cluster: pd.DataFrame, df_energy: pd.DataFrame,
+                              mol_vina_scores: Optional[pd.Series] = None) -> str:
     """Scatter: mean fragment convergence vs total energy per molecule."""
     if not HAS_MPL or df_cluster.empty or df_energy.empty:
         return ""
 
     # Mean convergence per molecule
     conv = df_cluster.groupby('Name')['dominant_fraction'].mean()
-    energy = df_energy.groupby('Name')['vina_mean'].sum()
+    if mol_vina_scores is not None and not mol_vina_scores.empty:
+        energy = mol_vina_scores
+        energy_label = 'Vina Affinity (kcal/mol)'
+    else:
+        energy = df_energy.groupby('Name')['vina_mean'].sum()
+        energy_label = 'Total Vina Interaction Energy (kcal/mol)'
 
     merged = pd.DataFrame({'convergence': conv, 'energy': energy}).dropna()
 
@@ -155,7 +178,7 @@ def fig_convergence_vs_energy(df_cluster: pd.DataFrame, df_energy: pd.DataFrame)
     plt.colorbar(sc, ax=ax, label='Total Vina Energy')
 
     ax.set_xlabel('Mean Fragment Convergence (dominant fraction)')
-    ax.set_ylabel('Total Vina Interaction Energy (kcal/mol)')
+    ax.set_ylabel(energy_label)
     ax.set_title('Convergence vs Binding Energy')
 
     # Highlight best quadrant
@@ -457,8 +480,49 @@ def _energy_bar(value: float, min_val: float) -> str:
     return f'<div style="display:flex;align-items:center;gap:6px"><span style="width:55px;text-align:right">{value:.2f}</span><div style="background:#3498db;height:12px;width:{pct:.0f}%;border-radius:2px;opacity:0.7"></div></div>'
 
 
-def _build_molecule_detail_section(df_energy, df_cluster, df_contacts, mol_totals, top_n=15):
-    """Build per-molecule fragment detail HTML with 3 views: mean, best, combined."""
+def _fragment_assessment(prop_vina: float, conv: float) -> str:
+    """Return HTML assessment badge for a fragment based on proportional Vina and convergence."""
+    if prop_vina < -3.0 and conv >= 0.7:
+        return '<span style="color:#27ae60">★ Anchor</span>'
+    elif prop_vina < -2.0 and conv >= 0.7:
+        return '<span style="color:#2980b9">✓ Reliable</span>'
+    elif prop_vina < -3.0 and conv < 0.5:
+        return '<span style="color:#f39c12">⚡ Potent but variable</span>'
+    elif conv < 0.3:
+        return '<span style="color:#e74c3c">✗ Unreliable</span>'
+    elif conv >= 0.7:
+        return '<span style="color:#95a5a6">Stable, weak</span>'
+    else:
+        return '<span style="color:#777">Moderate</span>'
+
+
+def _compute_weighted_conv(mol_frags: pd.DataFrame) -> float:
+    """Compute weighted convergence for a molecule's fragments.
+
+    weighted_conv = Σ(conv_i × |prop_vina_i|) / Σ(|prop_vina_i|)
+
+    Uses proportional_vina_mean if available, falls back to vina_mean.
+    """
+    if mol_frags.empty:
+        return 0.0
+
+    if 'proportional_vina_mean' in mol_frags.columns:
+        weights = mol_frags['proportional_vina_mean'].abs()
+    else:
+        weights = mol_frags['vina_mean'].abs()
+
+    convs = mol_frags['dominant_fraction']
+
+    total_weight = weights.sum()
+    if total_weight == 0:
+        return convs.mean() if len(convs) > 0 else 0.0
+
+    return float((convs * weights).sum() / total_weight)
+
+
+def _build_molecule_detail_section(df_energy, df_cluster, df_contacts, df_gnina,
+                                    top_composite_names, df_plip=None):
+    """Build per-molecule detail cards for top 20 composite molecules."""
     if df_energy.empty or df_cluster.empty:
         return "<p><i>No data available</i></p>"
 
@@ -468,148 +532,149 @@ def _build_molecule_detail_section(df_energy, df_cluster, df_contacts, mol_total
         on=['Name', 'fragment_id'], how='left'
     ).fillna(0)
 
-    # Compute combined score per fragment: energy × convergence (more negative = better)
-    merged['combined'] = merged['vina_mean'] * merged['dominant_fraction']
+    # Use proportional_vina_mean for fragment composite if available
+    prop_vina_col = 'proportional_vina_mean' if 'proportional_vina_mean' in merged.columns else 'vina_mean'
+    merged['fragment_composite'] = merged[prop_vina_col] * merged['dominant_fraction']
 
-    # Three molecule-level rankings
-    mol_mean = merged.groupby('Name')['vina_mean'].sum()
-    mol_best = merged.groupby('Name')['vina_best'].sum()
-    mol_combined = merged.groupby('Name')['combined'].sum()
+    # Get top 3 contact residues per fragment
+    frag_top_contacts = {}
+    if not df_contacts.empty:
+        for (name, frag_id), grp in df_contacts.groupby(['Name', 'fragment_id']) if 'fragment_id' in df_contacts.columns else []:
+            top3 = grp.nsmallest(3, 'min_distance')['residue_id'].tolist()
+            frag_top_contacts[(name, frag_id)] = top3
 
-    # Get top molecules by combined score (default sort)
-    top_mols = mol_combined.sort_values().head(top_n).index.tolist()
+    # Build gnina lookup for drug-likeness
+    gnina_lookup = {}
+    if df_gnina is not None and not df_gnina.empty:
+        for _, row in df_gnina.iterrows():
+            gnina_lookup[row['name']] = row
 
-    # Global min for bar scaling
-    global_min = merged['vina_mean'].min()
-    global_best_min = merged['vina_best'].min()
-
-    # Molecule-level summary table (all three views)
-    summary_html = """
-<h3>Molecule Summary — Three Views</h3>
-<p style="font-size:12px;color:#777">
-    <b>Mean</b>: average energy across all poses (consistency).
-    <b>Best</b>: best single pose energy (ceiling).
-    <b>Combined</b>: energy × convergence (rewards consistency + energy).
-</p>
-<table class="data-table">
-    <tr>
-        <th>Rank</th>
-        <th>Molecule</th>
-        <th>Mean Total</th>
-        <th>Best Total</th>
-        <th>Combined Total</th>
-        <th>Mean Conv</th>
-        <th>Frags</th>
-    </tr>"""
-
-    for rank, mol_name in enumerate(top_mols, 1):
-        mf = merged[merged['Name'] == mol_name]
-        mc = mf['dominant_fraction'].mean()
-        summary_html += f"""
-    <tr>
-        <td>{rank}</td>
-        <td>{mol_name[:40]}</td>
-        <td>{mol_mean.get(mol_name, 0):.2f}</td>
-        <td>{mol_best.get(mol_name, 0):.2f}</td>
-        <td><b>{mol_combined.get(mol_name, 0):.2f}</b></td>
-        <td>{_stability_badge(mc)}</td>
-        <td>{len(mf)}</td>
-    </tr>"""
-
-    summary_html += "</table>"
-
-    # Per-molecule detail cards
     cards_html = ""
-    for rank, mol_name in enumerate(top_mols, 1):
-        mol_frags = merged[merged['Name'] == mol_name].sort_values('combined')
-        total_mean = mol_frags['vina_mean'].sum()
-        total_best = mol_frags['vina_best'].sum()
-        total_combined = mol_frags['combined'].sum()
-        mean_conv = mol_frags['dominant_fraction'].mean()
+    for rank, mol_name in enumerate(top_composite_names, 1):
+        mol_frags = merged[merged['Name'] == mol_name].sort_values('fragment_composite')
+        if mol_frags.empty:
+            continue
 
-        # Find extremes
-        best_e_frag = mol_frags.loc[mol_frags['vina_mean'].idxmin()]
-        most_stable = mol_frags.loc[mol_frags['dominant_fraction'].idxmax()]
-        most_unstable = mol_frags.loc[mol_frags['dominant_fraction'].idxmin()]
-        best_combined = mol_frags.iloc[0]  # sorted by combined ascending
+        # Get whole-molecule data from gnina
+        gnina_row = gnina_lookup.get(mol_name, {})
+        vina_aff = gnina_row.get('vina_affinity', mol_frags['vina_mean'].sum()) if isinstance(gnina_row, dict) else getattr(gnina_row, 'vina_affinity', mol_frags['vina_mean'].sum())
+
+        # Compute weighted conv
+        weighted_conv = _compute_weighted_conv(mol_frags)
+        composite = vina_aff * weighted_conv
+
+        # Drug-likeness from gnina
+        mw = gnina_row.get('MW', '') if isinstance(gnina_row, dict) else getattr(gnina_row, 'MW', '')
+        qed = gnina_row.get('QED', '') if isinstance(gnina_row, dict) else getattr(gnina_row, 'QED', '')
+        tpsa = gnina_row.get('TPSA', '') if isinstance(gnina_row, dict) else getattr(gnina_row, 'TPSA', '')
+
+        mw_str = f"{mw:.1f}" if isinstance(mw, (int, float)) and not pd.isna(mw) else "N/A"
+        qed_str = f"{qed:.3f}" if isinstance(qed, (int, float)) and not pd.isna(qed) else "N/A"
+        tpsa_str = f"{tpsa:.1f}" if isinstance(tpsa, (int, float)) and not pd.isna(tpsa) else "N/A"
 
         cards_html += f"""
 <div style="background:white;border:1px solid #ddd;border-radius:8px;padding:15px;margin:15px 0">
     <h3 style="margin-top:0">#{rank} {mol_name}</h3>
     <div class="stats" style="margin-bottom:10px">
         <div class="stat-card" style="min-width:100px">
-            <div class="stat-value" style="font-size:16px">{total_mean:.2f}</div>
-            <div class="stat-label">Mean Energy</div>
+            <div class="stat-value" style="font-size:16px">{vina_aff:.2f}</div>
+            <div class="stat-label">Vina Affinity</div>
         </div>
         <div class="stat-card" style="min-width:100px">
-            <div class="stat-value" style="font-size:16px">{total_best:.2f}</div>
-            <div class="stat-label">Best Energy</div>
+            <div class="stat-value" style="font-size:16px">{weighted_conv:.3f}</div>
+            <div class="stat-label">Weighted Conv</div>
         </div>
         <div class="stat-card" style="min-width:100px">
-            <div class="stat-value" style="font-size:16px;color:#8e44ad"><b>{total_combined:.2f}</b></div>
-            <div class="stat-label">Combined Score</div>
+            <div class="stat-value" style="font-size:16px;color:#8e44ad"><b>{composite:.2f}</b></div>
+            <div class="stat-label">Composite</div>
         </div>
-        <div class="stat-card" style="min-width:100px">
-            <div class="stat-value" style="font-size:16px">{mean_conv:.0%}</div>
-            <div class="stat-label">Mean Conv</div>
+        <div class="stat-card" style="min-width:80px">
+            <div class="stat-value" style="font-size:14px">{mw_str}</div>
+            <div class="stat-label">MW</div>
         </div>
-        <div class="stat-card" style="min-width:100px">
-            <div class="stat-value" style="font-size:14px;color:#8e44ad">{best_combined['fragment_label']}</div>
-            <div class="stat-label">Best Combined</div>
+        <div class="stat-card" style="min-width:80px">
+            <div class="stat-value" style="font-size:14px">{qed_str}</div>
+            <div class="stat-label">QED</div>
+        </div>
+        <div class="stat-card" style="min-width:80px">
+            <div class="stat-value" style="font-size:14px">{tpsa_str}</div>
+            <div class="stat-label">TPSA</div>
         </div>
     </div>
     <table class="data-table">
         <tr>
             <th>Fragment</th>
             <th>Atoms</th>
-            <th>Mean E</th>
-            <th>Best E</th>
-            <th>Combined</th>
-            <th>H-bond</th>
+            <th>Prop. Vina</th>
+            <th>Convergence</th>
+            <th>Frag Composite</th>
+            <th>Top 3 Contact Residues</th>
             <th>Clusters</th>
             <th>Stability</th>
             <th>Assessment</th>
         </tr>"""
 
         for _, f in mol_frags.iterrows():
-            # Assessment logic
-            e = f['vina_mean']
+            prop_vina = f[prop_vina_col]
             c = f['dominant_fraction']
-            if e < -3.0 and c >= 0.7:
-                assessment = '<span style="color:#27ae60">★ Anchor</span>'
-            elif e < -2.0 and c >= 0.7:
-                assessment = '<span style="color:#2980b9">✓ Reliable</span>'
-            elif e < -3.0 and c < 0.5:
-                assessment = '<span style="color:#f39c12">⚡ Potent but variable</span>'
-            elif c >= 0.7:
-                assessment = '<span style="color:#95a5a6">Stable, weak</span>'
-            elif c < 0.5:
-                assessment = '<span style="color:#e74c3c">✗ Unreliable</span>'
-            else:
-                assessment = '<span style="color:#777">Moderate</span>'
+            assessment = _fragment_assessment(prop_vina, c)
+
+            # Top contacts for this fragment
+            contacts_key = (mol_name, f['fragment_id'])
+            top3_contacts = frag_top_contacts.get(contacts_key, [])
+            contacts_str = ", ".join(top3_contacts[:3]) if top3_contacts else "—"
 
             cards_html += f"""
         <tr>
             <td><b>{f['fragment_label']}</b></td>
             <td>{int(f['n_atoms'])}</td>
-            <td>{f['vina_mean']:.3f}</td>
-            <td>{f['vina_best']:.3f}</td>
-            <td><b>{f['combined']:.3f}</b></td>
-            <td>{f['hbond_contrib']:.3f}</td>
+            <td>{prop_vina:.3f}</td>
+            <td>{_stability_badge(c)}</td>
+            <td><b>{f['fragment_composite']:.3f}</b></td>
+            <td style="font-size:11px">{contacts_str}</td>
             <td>{int(f['n_clusters'])}</td>
-            <td>{_stability_badge(f['dominant_fraction'])}</td>
+            <td>{_stability_badge(c)}</td>
             <td>{assessment}</td>
         </tr>"""
 
         cards_html += """
+    </table>"""
+
+        # PLIP interactions if available
+        if df_plip is not None and not df_plip.empty:
+            mol_plip = df_plip[df_plip['Name'] == mol_name] if 'Name' in df_plip.columns else pd.DataFrame()
+            if not mol_plip.empty:
+                cards_html += """
+    <details style="margin-top:10px">
+    <summary style="cursor:pointer;color:#2980b9"><b>PLIP Interactions</b></summary>
+    <table class="data-table" style="margin-top:5px">
+        <tr>"""
+                for col in mol_plip.columns:
+                    if col != 'Name':
+                        cards_html += f"<th>{col}</th>"
+                cards_html += "</tr>"
+                for _, plip_row in mol_plip.iterrows():
+                    cards_html += "<tr>"
+                    for col in mol_plip.columns:
+                        if col != 'Name':
+                            val = plip_row[col]
+                            if isinstance(val, float):
+                                cards_html += f"<td>{val:.3f}</td>"
+                            else:
+                                cards_html += f"<td>{val}</td>"
+                    cards_html += "</tr>"
+                cards_html += """
     </table>
+    </details>"""
+
+        cards_html += """
 </div>"""
 
-    return summary_html + cards_html
+    return cards_html
 
 
-def _build_consensus_table(df_energy, df_cluster):
-    """Build cross-molecule consensus fragment table with combined score."""
+def _build_consensus_table(df_energy, df_cluster, df_contacts):
+    """Build top 20 individual fragments table by fragment_composite = prop_vina × conv."""
     if df_energy.empty or df_cluster.empty:
         return "<p><i>No data available</i></p>"
 
@@ -618,38 +683,42 @@ def _build_consensus_table(df_energy, df_cluster):
         on=['Name', 'fragment_id'], how='left'
     ).fillna(0)
 
-    merged['combined'] = merged['vina_mean'] * merged['dominant_fraction']
+    # Use proportional_vina_mean if available, else vina_mean
+    prop_vina_col = 'proportional_vina_mean' if 'proportional_vina_mean' in merged.columns else 'vina_mean'
+    merged['fragment_composite'] = merged[prop_vina_col] * merged['dominant_fraction']
 
-    # Best individual fragments by combined score
-    best_individual = merged.nsmallest(20, 'combined')
+    # Get top contact residue per fragment
+    frag_top_contact = {}
+    if not df_contacts.empty and 'fragment_id' in df_contacts.columns:
+        for (name, frag_id), grp in df_contacts.groupby(['Name', 'fragment_id']):
+            top1 = grp.nsmallest(1, 'min_distance')['residue_id'].values
+            if len(top1) > 0:
+                frag_top_contact[(name, frag_id)] = top1[0]
 
-    html = """<h3>Top 20 Individual Fragments (Combined: Energy × Convergence)</h3>
-<p style="font-size:12px;color:#777">Fragments that are both energetically favorable AND consistently positioned. 
-More negative combined = better.</p>
+    # Best individual fragments by fragment_composite (most negative first)
+    best_individual = merged.nsmallest(20, 'fragment_composite')
+
+    html = """<h3>Top 20 Individual Fragments (Prop. Vina × Convergence)</h3>
+<p style="font-size:12px;color:#777">Fragments that are both energetically favorable AND consistently positioned.
+More negative fragment composite = better.</p>
 <table class="data-table">
     <tr>
         <th>Rank</th>
         <th>Molecule</th>
         <th>Fragment</th>
         <th>Atoms</th>
-        <th>Mean E</th>
-        <th>Best E</th>
+        <th>Prop. Vina</th>
         <th>Conv</th>
-        <th>Combined</th>
-        <th>Assessment</th>
+        <th>Frag Composite</th>
+        <th>is_ring</th>
+        <th>Top Contact Residue</th>
     </tr>"""
 
     for rank, (_, r) in enumerate(best_individual.iterrows(), 1):
-        e = r['vina_mean']
+        prop_vina = r[prop_vina_col]
         c = r['dominant_fraction']
-        if e < -3.0 and c >= 0.7:
-            assessment = '<span style="color:#27ae60">★ Anchor</span>'
-        elif e < -2.0 and c >= 0.7:
-            assessment = '<span style="color:#2980b9">✓ Reliable</span>'
-        elif e < -3.0 and c < 0.5:
-            assessment = '<span style="color:#f39c12">⚡ Potent but variable</span>'
-        else:
-            assessment = ''
+        is_ring = "Yes" if r['fragment_label'].startswith('ring') else "No"
+        top_contact = frag_top_contact.get((r['Name'], r['fragment_id']), "—")
 
         html += f"""
     <tr>
@@ -657,21 +726,20 @@ More negative combined = better.</p>
         <td>{r['Name'][:35]}</td>
         <td><b>{r['fragment_label']}</b></td>
         <td>{int(r['n_atoms'])}</td>
-        <td>{r['vina_mean']:.3f}</td>
-        <td>{r['vina_best']:.3f}</td>
-        <td>{_stability_badge(r['dominant_fraction'])}</td>
-        <td><b>{r['combined']:.3f}</b></td>
-        <td>{assessment}</td>
+        <td>{prop_vina:.3f}</td>
+        <td>{_stability_badge(c)}</td>
+        <td><b>{r['fragment_composite']:.3f}</b></td>
+        <td>{is_ring}</td>
+        <td>{top_contact}</td>
     </tr>"""
 
     html += "</table>"
 
-    # Fragment type summary
+    # Fragment type summary (kept as informational)
     by_type = merged.groupby('fragment_label').agg(
         n_molecules=('Name', 'nunique'),
-        mean_energy=('vina_mean', 'mean'),
-        mean_best=('vina_best', 'mean'),
-        mean_combined=('combined', 'mean'),
+        mean_prop_vina=(prop_vina_col, 'mean'),
+        mean_combined=('fragment_composite', 'mean'),
         mean_conv=('dominant_fraction', 'mean'),
         pct_stable=('dominant_fraction', lambda x: (x > 0.7).mean()),
     ).sort_values('mean_combined')
@@ -682,9 +750,8 @@ More negative combined = better.</p>
     <tr>
         <th>Fragment Type</th>
         <th>Molecules</th>
-        <th>Mean Energy</th>
-        <th>Mean Best</th>
-        <th>Mean Combined</th>
+        <th>Mean Prop. Vina</th>
+        <th>Mean Frag Composite</th>
         <th>Mean Conv</th>
         <th>% Stable</th>
     </tr>"""
@@ -694,8 +761,7 @@ More negative combined = better.</p>
     <tr>
         <td><b>{label}</b></td>
         <td>{int(row['n_molecules'])}</td>
-        <td>{row['mean_energy']:.3f}</td>
-        <td>{row['mean_best']:.3f}</td>
+        <td>{row['mean_prop_vina']:.3f}</td>
         <td><b>{row['mean_combined']:.3f}</b></td>
         <td>{_stability_badge(row['mean_conv'])}</td>
         <td>{row['pct_stable']:.0%}</td>
@@ -716,92 +782,133 @@ def generate_html_report(
         hotspot_data: dict,
         figures: Dict[str, str],
         rmsd_data: Optional[Dict] = None,
+        df_gnina: Optional[pd.DataFrame] = None,
+        df_plip: Optional[pd.DataFrame] = None,
 ) -> str:
-    """Generate complete HTML report."""
+    """Generate complete HTML report.
+
+    Args:
+        df_gnina: Full gnina_scores.csv DataFrame with drug-likeness columns.
+            Used for Vina affinity, CNN scores, MW, QED, TPSA, LogP.
+        df_plip: PLIP interaction data (plip_interactions_top20.csv) if available.
+    """
 
     # Compute summary stats
     n_molecules = df_energy['Name'].nunique()
-    mol_totals = df_energy.groupby('Name')['vina_mean'].sum().sort_values()
+
+    # Energy from gnina_scores (mandatory in v3.0)
+    mol_vina_scores = None
+    if df_gnina is not None and not df_gnina.empty:
+        df_ok = df_gnina[df_gnina['success'] == True].copy() if 'success' in df_gnina.columns else df_gnina.copy()
+        mol_vina_scores = df_ok.set_index('name')['vina_affinity']
+
+    if mol_vina_scores is not None and not mol_vina_scores.empty:
+        mol_totals = mol_vina_scores.sort_values()
+    else:
+        mol_totals = df_energy.groupby('Name')['vina_mean'].sum().sort_values()
     mean_conv = df_cluster['dominant_fraction'].mean() if not df_cluster.empty else 0
 
-    # === COMPOSITE RANKING ===
-    mol_energy = df_energy.groupby('Name')['vina_mean'].sum().rename('total_vina')
-    mol_conv = df_cluster.groupby('Name')['dominant_fraction'].mean().rename('mean_conv') if not df_cluster.empty else pd.Series(dtype=float, name='mean_conv')
-    mol_min_conv = df_cluster.groupby('Name')['dominant_fraction'].min().rename('min_conv') if not df_cluster.empty else pd.Series(dtype=float, name='min_conv')
+    # === MULTIPLICATIVE COMPOSITE RANKING ===
+    # Merge energy + cluster at fragment level for weighted_conv calculation
+    frag_merged = df_energy.merge(
+        df_cluster[['Name', 'fragment_id', 'dominant_fraction']],
+        on=['Name', 'fragment_id'], how='left'
+    ).fillna(0) if not df_cluster.empty else df_energy.copy()
 
-    # Key contacts (top 5 consensus residues)
-    top_residues = []
-    if not df_hotspot_contacts.empty:
-        top_residues = df_hotspot_contacts.nlargest(5, 'n_molecules_contacting')['residue_id'].tolist()
+    if 'dominant_fraction' not in frag_merged.columns:
+        frag_merged['dominant_fraction'] = 0.0
 
-    if top_residues and not df_contacts.empty:
-        mol_key_contacts = df_contacts[df_contacts['residue_id'].isin(top_residues)].groupby('Name')['residue_id'].nunique().rename('n_key_contacts')
-        # H-bonds to key residues
-        contact_type_col = 'contact_type' if 'contact_type' in df_contacts.columns else 'dominant_contact_type'
-        hbond_filt = df_contacts[(df_contacts['residue_id'].isin(top_residues)) &
-                                  (df_contacts[contact_type_col].isin(['hbond', 'strong_hbond']))]
-        mol_hbonds = hbond_filt.groupby('Name')['residue_id'].nunique().rename('n_key_hbonds')
+    # Use proportional_vina_mean for weighting if available
+    prop_vina_col = 'proportional_vina_mean' if 'proportional_vina_mean' in frag_merged.columns else 'vina_mean'
+
+    # Compute weighted_conv per molecule
+    weighted_conv_dict = {}
+    min_conv_dict = {}
+    best_frag_dict = {}  # best fragment label + proportional contribution
+    for mol_name, mol_frags in frag_merged.groupby('Name'):
+        weighted_conv_dict[mol_name] = _compute_weighted_conv(mol_frags)
+        min_conv_dict[mol_name] = mol_frags['dominant_fraction'].min()
+        # Best fragment by fragment_composite
+        mol_frags_copy = mol_frags.copy()
+        mol_frags_copy['_fc'] = mol_frags_copy[prop_vina_col] * mol_frags_copy['dominant_fraction']
+        best_idx = mol_frags_copy['_fc'].idxmin()
+        best_row = mol_frags_copy.loc[best_idx]
+        best_frag_dict[mol_name] = f"{best_row['fragment_label']} ({best_row[prop_vina_col]:.2f})"
+
+    mol_weighted_conv = pd.Series(weighted_conv_dict, name='weighted_conv')
+    mol_min_conv = pd.Series(min_conv_dict, name='min_conv')
+    mol_best_frag = pd.Series(best_frag_dict, name='best_fragment')
+
+    # Build ranking DataFrame
+    if mol_vina_scores is not None and not mol_vina_scores.empty:
+        mol_energy = mol_vina_scores.rename('vina_affinity')
     else:
-        mol_key_contacts = pd.Series(dtype=float, name='n_key_contacts')
-        mol_hbonds = pd.Series(dtype=float, name='n_key_hbonds')
+        mol_energy = df_energy.groupby('Name')['vina_mean'].sum().rename('vina_affinity')
 
     ranking = pd.DataFrame(mol_energy)
-    ranking = ranking.join(mol_conv).join(mol_min_conv).join(mol_key_contacts).join(mol_hbonds).fillna(0)
+    ranking = ranking.join(mol_weighted_conv).join(mol_min_conv).join(mol_best_frag).fillna(0)
 
-    # Normalize 0-1
-    def _norm(s, lower_better=True):
-        if s.max() == s.min():
-            return pd.Series(0.5, index=s.index)
-        return (s.max() - s) / (s.max() - s.min()) if lower_better else (s - s.min()) / (s.max() - s.min())
+    # Composite = vina_affinity × weighted_conv (units: kcal/mol, more negative = better)
+    ranking['composite'] = ranking['vina_affinity'] * ranking['weighted_conv']
+    ranking = ranking.sort_values('composite', ascending=True)  # most negative first
 
-    ranking['composite'] = (
-        0.40 * _norm(ranking['total_vina'], lower_better=True) +
-        0.25 * _norm(ranking['mean_conv'], lower_better=False) +
-        0.20 * _norm(ranking['n_key_contacts'], lower_better=False) +
-        0.15 * _norm(ranking['n_key_hbonds'], lower_better=False)
-    )
-    ranking = ranking.sort_values('composite', ascending=False)
+    # Join drug-likeness from gnina
+    if df_gnina is not None and not df_gnina.empty:
+        df_ok = df_gnina[df_gnina['success'] == True].copy() if 'success' in df_gnina.columns else df_gnina.copy()
+        drug_cols = []
+        for col in ['MW', 'QED', 'TPSA', 'LogP', 'CNN_score', 'CNN_affinity']:
+            if col in df_ok.columns:
+                drug_cols.append(col)
+        if drug_cols:
+            drug_df = df_ok.set_index('name')[drug_cols]
+            ranking = ranking.join(drug_df, how='left')
 
-    # Build composite top 20 table
+    # === TABLE 1: Top 20 by Vina Affinity (raw) ===
+    vina_top20_rows = []
+    vina_sorted = ranking.sort_values('vina_affinity', ascending=True)
+    for rank_i, (name, row) in enumerate(vina_sorted.head(20).iterrows(), 1):
+        n_frags = len(df_energy[df_energy['Name'] == name])
+        vina_top20_rows.append({
+            'Rank': rank_i,
+            'Molecule': name,
+            'Vina Affinity': round(row['vina_affinity'], 2),
+            'CNN Score': round(row.get('CNN_score', 0), 3) if pd.notna(row.get('CNN_score', None)) else '',
+            'CNN Affinity': round(row.get('CNN_affinity', 0), 2) if pd.notna(row.get('CNN_affinity', None)) else '',
+            'n_fragments': n_frags,
+            'MW': round(row.get('MW', 0), 1) if pd.notna(row.get('MW', None)) else '',
+            'QED': round(row.get('QED', 0), 3) if pd.notna(row.get('QED', None)) else '',
+            'TPSA': round(row.get('TPSA', 0), 1) if pd.notna(row.get('TPSA', None)) else '',
+            'LogP': round(row.get('LogP', 0), 2) if pd.notna(row.get('LogP', None)) else '',
+        })
+    df_vina_top20 = pd.DataFrame(vina_top20_rows)
+
+    # === TABLE 2: Top 20 by Composite (Vina × weighted_conv) ===
     composite_rows = []
     for rank_i, (name, row) in enumerate(ranking.head(20).iterrows(), 1):
-        frags = df_energy[df_energy['Name'] == name]
-        best_frag = frags.loc[frags['vina_mean'].idxmin()]
         composite_rows.append({
-            'Rank': rank_i, 'Molecule': name,
-            'Energy': round(row['total_vina'], 2),
-            'Convergence': round(row['mean_conv'], 2),
-            'Min Conv': round(row['min_conv'], 2),
-            'Key Contacts': f"{int(row['n_key_contacts'])}/5",
-            'H-bonds': int(row['n_key_hbonds']),
-            'Best Fragment': best_frag['fragment_label'],
-            'Score': round(row['composite'], 3),
+            'Rank': rank_i,
+            'Molecule': name,
+            'Vina Affinity': round(row['vina_affinity'], 2),
+            'Weighted Conv': round(row['weighted_conv'], 3),
+            'Composite': round(row['composite'], 2),
+            'Min Frag Conv': round(row['min_conv'], 3),
+            'Best Fragment': row['best_fragment'],
+            'MW': round(row.get('MW', 0), 1) if pd.notna(row.get('MW', None)) else '',
+            'QED': round(row.get('QED', 0), 3) if pd.notna(row.get('QED', None)) else '',
         })
     df_composite = pd.DataFrame(composite_rows)
 
-    # Also keep energy-only top 10 for reference
-    top10_rows = []
-    for rank_i, (name, total) in enumerate(mol_totals.head(10).items(), 1):
-        frags = df_energy[df_energy['Name'] == name]
-        n_frags = len(frags)
-        best_frag = frags.loc[frags['vina_mean'].idxmin()]
-        conv = df_cluster[df_cluster['Name'] == name]['dominant_fraction'].mean() if not df_cluster.empty else 0
-        top10_rows.append({
-            'Rank': rank_i, 'Molecule': name,
-            'Total Energy': round(total, 2),
-            'Fragments': n_frags,
-            'Best Fragment': best_frag['fragment_label'],
-            'Best Frag Energy': round(best_frag['vina_mean'], 2),
-            'Mean Convergence': round(conv, 2),
-        })
-    df_top10 = pd.DataFrame(top10_rows)
+    # Top 20 composite molecule names for detail cards
+    top20_composite_names = ranking.head(20).index.tolist()
 
-    # Candidate categories
-    n_strong = len(ranking[(_norm(ranking['total_vina']) > 0.7) & (_norm(ranking['mean_conv'], False) > 0.5) & (ranking['n_key_contacts'] >= 4)])
-    n_risky = len(ranking[(_norm(ranking['total_vina']) > 0.7) & (_norm(ranking['mean_conv'], False) < 0.3)])
-    n_weak = len(ranking[_norm(ranking['total_vina']) < 0.3])
+    # Candidate categories (informational)
+    n_strong = len(ranking[(ranking['vina_affinity'] < ranking['vina_affinity'].quantile(0.3)) &
+                           (ranking['weighted_conv'] > 0.5)])
+    n_risky = len(ranking[(ranking['vina_affinity'] < ranking['vina_affinity'].quantile(0.3)) &
+                          (ranking['weighted_conv'] < 0.3)])
+    n_weak = len(ranking[ranking['vina_affinity'] > ranking['vina_affinity'].quantile(0.7)])
 
-    # Top contacts table
+    # Top contacts table (informational)
     if not df_hotspot_contacts.empty:
         df_top_contacts = df_hotspot_contacts.nlargest(15, 'contact_fraction')[[
             'residue_id', 'residue_name', 'n_molecules_contacting',
@@ -819,7 +926,6 @@ def generate_html_report(
         linker_energy = 0.0
 
     # === PRE-COMPUTE SAFE VALUES for HTML template ===
-    # Hotspot contacts (may be empty for small campaigns)
     _hc = df_hotspot_contacts
     _hc0_resid = _hc.iloc[0]['residue_id'] if len(_hc) > 0 else 'N/A'
     _hc0_nmol = int(_hc.iloc[0]['n_molecules_contacting']) if len(_hc) > 0 else 0
@@ -827,14 +933,14 @@ def generate_html_report(
     _hc1_resid = _hc.iloc[1]['residue_id'] if len(_hc) > 1 else 'N/A'
     _hc1_frac = _hc.iloc[1]['contact_fraction'] * 100 if len(_hc) > 1 else 0
 
-    # Top candidates (may have < 3 molecules)
+    # Top candidates
     _top_candidates_lines = []
     for _ti in range(min(3, len(ranking))):
         _tn = ranking.index[_ti]
-        _te = ranking['total_vina'].iloc[_ti]
-        _tc = ranking['mean_conv'].iloc[_ti]
+        _te = ranking['vina_affinity'].iloc[_ti]
+        _tc = ranking['weighted_conv'].iloc[_ti]
         _ts = ranking['composite'].iloc[_ti]
-        _top_candidates_lines.append(f"<b>{_tn}</b> (E={_te:.1f}, conv={_tc:.0%}, score={_ts:.3f})")
+        _top_candidates_lines.append(f"<b>{_tn}</b> (Vina={_te:.1f}, w_conv={_tc:.3f}, composite={_ts:.2f})")
     _top_candidates_str = ", ".join(_top_candidates_lines) if _top_candidates_lines else "N/A"
 
     html = f"""<!DOCTYPE html>
@@ -876,7 +982,8 @@ def generate_html_report(
 <h1>Campaign Report: {campaign_id}</h1>
 <p><b>Engine:</b> {engine.upper()} &nbsp; | &nbsp;
    <b>Generated:</b> {datetime.now().strftime('%Y-%m-%d %H:%M')} &nbsp; | &nbsp;
-   <b>Molecules:</b> {n_molecules}</p>
+   <b>Molecules:</b> {n_molecules} &nbsp; | &nbsp;
+   <b>Report version:</b> v3.0</p>
 
 <div class="stats">
     <div class="stat-card">
@@ -889,7 +996,7 @@ def generate_html_report(
     </div>
     <div class="stat-card">
         <div class="stat-value">{mol_totals.min():.1f}</div>
-        <div class="stat-label">Best Energy (kcal/mol)</div>
+        <div class="stat-label">Best Vina (kcal/mol)</div>
     </div>
     <div class="stat-card">
         <div class="stat-value">{mean_conv:.0%}</div>
@@ -907,23 +1014,23 @@ def generate_html_report(
 <h2>1. What molecules bind best?</h2>
 
 <div class="summary-box">
-    <b>Top molecule (composite):</b> {ranking.index[0]} (score {ranking['composite'].iloc[0]:.3f})<br>
-    <b>Energy range:</b> {mol_totals.min():.2f} to {mol_totals.max():.2f} kcal/mol<br>
+    <b>Top molecule (composite):</b> {ranking.index[0]} (composite {ranking['composite'].iloc[0]:.2f} kcal/mol)<br>
+    <b>Vina range:</b> {mol_totals.min():.2f} to {mol_totals.max():.2f} kcal/mol<br>
     <b>Campaign mean:</b> {mol_totals.mean():.2f} kcal/mol<br>
     <b>Candidates:</b> {n_strong} strong, {n_risky} risky (good energy but low convergence), {n_weak} weak
 </div>
 
-<h3>Composite Ranking — Top 20</h3>
-<p style="font-size:12px;color:#777">Score = Energy (40%) + Convergence (25%) + Key Contacts (20%) + H-bonds (15%).
-Key contacts: {', '.join(top_residues[:5]) if top_residues else 'N/A'}.</p>
+<h3>Table 1: Top 20 by Vina Affinity (raw)</h3>
+<p style="font-size:12px;color:#777">Ranked by whole-molecule Vina affinity from gnina_scores.csv. No convergence weighting.</p>
+{_html_table(df_vina_top20)}
+
+<h3>Table 2: Top 20 by Composite (Vina × Weighted Convergence)</h3>
+<p style="font-size:12px;color:#777">Composite = Vina Affinity × weighted_conv.
+weighted_conv = Σ(conv_i × |prop_vina_i|) / Σ(|prop_vina_i|).
+Units: kcal/mol. More negative = better.</p>
 {_html_table(df_composite)}
 
-<details>
-<summary style="cursor:pointer;color:#2980b9;margin:10px 0"><b>Show Top 10 by Energy Only</b></summary>
-{_html_table(df_top10)}
-</details>
-
-{f'<div class="figure"><img src="data:image/png;base64,{figures["ranking"]}"><div class="figure-caption">Fig 1. Molecules ranked by total Vina interaction energy (sum of all fragments).</div></div>' if figures.get("ranking") else ''}
+{f'<div class="figure"><img src="data:image/png;base64,{figures["ranking"]}"><div class="figure-caption">Fig 1. Molecules ranked by Vina affinity (whole-molecule, torsion-corrected).</div></div>' if figures.get("ranking") else ''}
 
 <!-- ============================================================ -->
 <h2>2. Where do they bind?</h2>
@@ -988,7 +1095,7 @@ The dominant interaction type is steric complementarity (gauss2) with significan
 
 <div class="key-finding">
 <h3>Top Candidates (Composite Ranking)</h3>
-<p>The top {min(3, len(ranking))} molecules by composite score (energy + convergence + contacts) are:
+<p>The top {min(3, len(ranking))} molecules by multiplicative composite (Vina × weighted convergence) are:
 {_top_candidates_str}.
 Of {n_molecules} molecules, {n_strong} are strong candidates, {n_risky} have good energy but unreliable poses, and {n_weak} should be deprioritized.</p>
 </div>
@@ -1001,33 +1108,32 @@ Ring fragments contribute {ring_energy:.2f} kcal/mol on average with larger cont
 </div>
 
 <!-- ============================================================ -->
-<h2>6. Fragment Detail per Molecule</h2>
+<h2>6. Detail Cards — Top 20 Composite</h2>
 
 <div class="summary-box">
-Three views per molecule:<br>
-<b>Mean Energy</b>: average across all poses — measures consistent binding.<br>
-<b>Best Energy</b>: best single pose — measures binding ceiling.<br>
-<b>Combined (E × Conv)</b>: energy weighted by convergence — rewards fragments that bind well AND reliably.<br><br>
-Fragment assessment: <span style="color:#27ae60">★ Anchor</span> = strong + stable,
-<span style="color:#2980b9">✓ Reliable</span> = moderate + stable,
-<span style="color:#f39c12">⚡ Potent but variable</span> = strong + unstable,
-<span style="color:#e74c3c">✗ Unreliable</span> = unstable.
+Per-molecule fragment breakdown for the top 20 composite-ranked molecules.<br>
+<b>Composite</b> = Vina Affinity × weighted_conv (kcal/mol, more negative = better).<br><br>
+Fragment assessment: <span style="color:#27ae60">★ Anchor</span> = prop_vina &lt; -3 and conv &gt; 0.7,
+<span style="color:#2980b9">✓ Reliable</span> = prop_vina &lt; -2 and conv &gt; 0.7,
+<span style="color:#f39c12">⚡ Potent but variable</span> = prop_vina &lt; -3 and conv &lt; 0.5,
+<span style="color:#e74c3c">✗ Unreliable</span> = conv &lt; 0.3.
 </div>
 
-{_build_molecule_detail_section(df_energy, df_cluster, df_contacts, mol_totals, top_n=15)}
+{_build_molecule_detail_section(df_energy, df_cluster, df_contacts, df_gnina, top20_composite_names, df_plip=df_plip)}
 
 <!-- ============================================================ -->
-<h2>7. Cross-Molecule Fragment Consensus</h2>
+<h2>7. Top 20 Individual Fragments</h2>
 
 <div class="summary-box">
-Which fragment types consistently bind well across the entire library?
-Ranked by energy × convergence (most negative = best combination).
+Which individual fragments across all molecules have the best combination of
+proportional Vina contribution and convergence?
+Ranked by fragment_composite = proportional_vina × convergence (most negative = best).
 </div>
 
-{_build_consensus_table(df_energy, df_cluster)}
+{_build_consensus_table(df_energy, df_cluster, df_contacts)}
 
 <div class="footer">
-    Generated by molecular_docking m05 pipeline v2.1 — Module 05g Campaign Report
+    Generated by molecular_docking m05 pipeline v3.0 — Module 05g Campaign Report
 </div>
 
 </body>
@@ -1051,21 +1157,40 @@ def run_campaign_report(
         engine: str = "gnina",
         reference_mol2: Optional[str] = None,
         control_name: str = "UDX",
+        gnina_scores_csv: Optional[str] = None,
 ) -> Dict[str, any]:
     """
     Generate consolidated campaign report.
 
-    Reads: 05a-05f outputs
+    Reads: 05a-05f outputs + gnina_scores.csv (MANDATORY in v3.0)
     Saves: campaign_report.html + figures/
+
+    Args:
+        gnina_scores_csv: Path to gnina_scores.csv from 02c. MANDATORY in v3.0.
     """
     logger.info("=" * 60)
-    logger.info("05g CAMPAIGN REPORT v1.0")
+    logger.info("05g CAMPAIGN REPORT v3.0")
     logger.info("=" * 60)
+
+    # gnina_scores.csv is MANDATORY in v3.0
+    if not gnina_scores_csv or not Path(gnina_scores_csv).exists():
+        logger.error("gnina_scores.csv is required for campaign report v3.0")
+        return {"success": False, "error": "gnina_scores.csv not found — required for composite ranking"}
 
     out_path = Path(output_dir)
     out_path.mkdir(parents=True, exist_ok=True)
     fig_path = out_path / "figures"
     fig_path.mkdir(exist_ok=True)
+
+    # Load gnina_scores.csv as full DataFrame
+    df_gnina = pd.read_csv(gnina_scores_csv)
+    if 'name' not in df_gnina.columns or 'vina_affinity' not in df_gnina.columns:
+        logger.error("gnina_scores.csv missing 'name' or 'vina_affinity' columns")
+        return {"success": False, "error": "gnina_scores.csv missing required columns"}
+
+    df_ok = df_gnina[df_gnina['success'] == True].copy() if 'success' in df_gnina.columns else df_gnina.copy()
+    mol_vina_scores = df_ok.set_index('name')['vina_affinity']
+    logger.info(f"  Vina scores: {len(mol_vina_scores)} molecules from {gnina_scores_csv}")
 
     # Load data
     df_energy = pd.DataFrame()
@@ -1097,6 +1222,13 @@ def run_campaign_report(
         with open(hs_json) as f:
             hotspot_data = json.load(f)
 
+    # Load PLIP data if available
+    df_plip = None
+    plip_csv = Path(contact_dir) / "plip_interactions_top20.csv"
+    if plip_csv.exists():
+        df_plip = pd.read_csv(plip_csv)
+        logger.info(f"  PLIP: {len(df_plip)} interactions loaded")
+
     if df_energy.empty:
         logger.error("No energy data found — cannot generate report")
         return {"success": False, "error": "No energy data"}
@@ -1116,9 +1248,9 @@ def run_campaign_report(
     figures = {}
 
     if HAS_MPL:
-        figures["ranking"] = fig_molecule_ranking(df_energy)
+        figures["ranking"] = fig_molecule_ranking(df_energy, mol_vina_scores=mol_vina_scores)
         figures["breakdown"] = fig_fragment_breakdown(df_energy)
-        figures["conv_energy"] = fig_convergence_vs_energy(df_cluster, df_energy)
+        figures["conv_energy"] = fig_convergence_vs_energy(df_cluster, df_energy, mol_vina_scores=mol_vina_scores)
         figures["contacts"] = fig_contact_heatmap(df_contacts)
         figures["terms"] = fig_term_breakdown(df_energy)
         figures["efficiency"] = fig_fragment_efficiency(df_energy)
@@ -1142,47 +1274,66 @@ def run_campaign_report(
         hotspot_data=hotspot_data,
         figures=figures,
         rmsd_data=rmsd_data,
+        df_gnina=df_gnina,
+        df_plip=df_plip,
     )
 
     report_path = out_path / "campaign_report.html"
     report_path.write_text(html, encoding='utf-8')
 
-    # Save composite ranking as CSV
+    # Save composite ranking as CSV (same multiplicative formula as HTML)
     if not df_energy.empty and not df_cluster.empty:
-        mol_e = df_energy.groupby('Name')['vina_mean'].sum().rename('total_vina')
-        mol_c = df_cluster.groupby('Name')['dominant_fraction'].mean().rename('mean_conv')
-        mol_mc = df_cluster.groupby('Name')['dominant_fraction'].min().rename('min_conv')
-        rank_df = pd.DataFrame(mol_e).join(mol_c).join(mol_mc).fillna(0)
+        # Merge energy + cluster at fragment level
+        frag_merged = df_energy.merge(
+            df_cluster[['Name', 'fragment_id', 'dominant_fraction']],
+            on=['Name', 'fragment_id'], how='left'
+        ).fillna(0)
 
-        top_res = []
-        if not df_hotspot_contacts.empty:
-            top_res = df_hotspot_contacts.nlargest(5, 'n_molecules_contacting')['residue_id'].tolist()
-        if top_res and not df_contacts.empty:
-            ct_col = 'contact_type' if 'contact_type' in df_contacts.columns else 'dominant_contact_type'
-            rank_df = rank_df.join(
-                df_contacts[df_contacts['residue_id'].isin(top_res)].groupby('Name')['residue_id'].nunique().rename('n_key_contacts')
-            )
-            rank_df = rank_df.join(
-                df_contacts[(df_contacts['residue_id'].isin(top_res)) &
-                             (df_contacts[ct_col].isin(['hbond', 'strong_hbond']))].groupby('Name')['residue_id'].nunique().rename('n_key_hbonds')
-            )
-        rank_df = rank_df.fillna(0)
+        prop_vina_col = 'proportional_vina_mean' if 'proportional_vina_mean' in frag_merged.columns else 'vina_mean'
 
-        def _n(s, lb=True):
-            if s.max() == s.min(): return pd.Series(0.5, index=s.index)
-            return (s.max() - s) / (s.max() - s.min()) if lb else (s - s.min()) / (s.max() - s.min())
+        # Compute weighted_conv, min_conv, best_fragment per molecule
+        csv_rows = []
+        for mol_name, mol_frags in frag_merged.groupby('Name'):
+            vina_aff = mol_vina_scores.get(mol_name, np.nan)
+            if pd.isna(vina_aff):
+                continue
+            w_conv = _compute_weighted_conv(mol_frags)
+            min_c = mol_frags['dominant_fraction'].min()
+            composite = vina_aff * w_conv
 
-        rank_df['composite_score'] = (
-            0.40 * _n(rank_df['total_vina']) +
-            0.25 * _n(rank_df['mean_conv'], False) +
-            0.20 * _n(rank_df.get('n_key_contacts', pd.Series(0, index=rank_df.index)), False) +
-            0.15 * _n(rank_df.get('n_key_hbonds', pd.Series(0, index=rank_df.index)), False)
-        )
-        rank_df = rank_df.sort_values('composite_score', ascending=False)
+            # Best fragment
+            mol_frags_copy = mol_frags.copy()
+            mol_frags_copy['_fc'] = mol_frags_copy[prop_vina_col] * mol_frags_copy['dominant_fraction']
+            best_idx = mol_frags_copy['_fc'].idxmin()
+            best_row = mol_frags_copy.loc[best_idx]
+            best_frag_str = f"{best_row['fragment_label']} ({best_row[prop_vina_col]:.2f})"
+
+            row_data = {
+                'name': mol_name,
+                'vina_affinity': round(vina_aff, 3),
+                'weighted_conv': round(w_conv, 4),
+                'composite': round(composite, 3),
+                'min_conv': round(min_c, 4),
+                'best_fragment': best_frag_str,
+            }
+
+            # Add drug-likeness from gnina
+            gnina_mol = df_ok[df_ok['name'] == mol_name]
+            if not gnina_mol.empty:
+                gnina_row = gnina_mol.iloc[0]
+                if 'MW' in gnina_row:
+                    row_data['MW'] = round(gnina_row['MW'], 1) if pd.notna(gnina_row['MW']) else ''
+                if 'QED' in gnina_row:
+                    row_data['QED'] = round(gnina_row['QED'], 3) if pd.notna(gnina_row['QED']) else ''
+
+            csv_rows.append(row_data)
+
+        rank_df = pd.DataFrame(csv_rows)
+        rank_df = rank_df.sort_values('composite', ascending=True)  # most negative first
         rank_df.insert(0, 'rank', range(1, len(rank_df) + 1))
 
         ranking_csv = out_path / "composite_ranking.csv"
-        rank_df.to_csv(ranking_csv)
+        rank_df.to_csv(ranking_csv, index=False)
         logger.info(f"  Ranking: {ranking_csv} ({len(rank_df)} molecules)")
 
     logger.info(f"\n{'=' * 60}")

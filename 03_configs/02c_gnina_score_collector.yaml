@@ -27,7 +27,7 @@ parameters:
   #   "cnn_score"     = Probabilidad de pose correcta
   #   "vina_affinity" = Score Vina clásico
   #   "consensus"     = Promedio de los tres rankings
-  rank_by: "cnn_affinity"
+  rank_by: "vina_affinity"
 
   # Export ALL poses per molecule to gnina_all_poses.csv
   # Required for clustering module (03a)

@@ -20,7 +20,7 @@ Usage:
 
 Project: molecular_docking
 Module: 05f
-Version: 2.1
+Version: 3.0
 """
 
 import argparse
@@ -75,7 +75,7 @@ def main():
 
     campaign_dir = Path(args.campaign).parent
     campaign_id = cc.get("campaign_id", campaign_dir.name)
-    results_base = Path("05_results") / campaign_id / "m05_gnina_analysis"
+    results_base = Path("05_results") / campaign_id / "05_gnina_analysis"
 
     output_subdir = mc.get("outputs", {}).get("subdir", "05f_contact_mapping")
     output_dir = Path(args.output) if args.output else results_base / output_subdir
@@ -115,6 +115,16 @@ def main():
     hotspot_dir = str(results_base / "05d_binding_site_hotspots")
     molecule_names = [args.name] if args.name else None
 
+    plip_enabled = params.get("plip_enabled", False)
+    plip_top_n = params.get("plip_top_n", 20)
+
+    # Resolve gnina_scores.csv
+    gnina_scores_csv = params.get("gnina_scores_csv")
+    if not gnina_scores_csv:
+        auto_path = Path("05_results") / campaign_id / "02c_gnina_scores" / "gnina_scores.csv"
+        if auto_path.exists():
+            gnina_scores_csv = str(auto_path)
+
     logger.info(f"Campaign:       {campaign_id}")
     logger.info(f"Receptor:       {receptor_path}")
     logger.info(f"Cutoff:         {cutoff} A")
@@ -130,6 +140,9 @@ def main():
         cutoff=cutoff,
         max_clusters_per_fragment=max_clusters,
         molecule_names=molecule_names,
+        plip_enabled=plip_enabled,
+        plip_top_n=plip_top_n,
+        gnina_scores_csv=gnina_scores_csv,
     )
 
     if not result.get("success"):

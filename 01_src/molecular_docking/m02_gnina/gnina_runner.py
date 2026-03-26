@@ -74,7 +74,6 @@ def find_gnina(gnina_path: Optional[str] = None) -> Optional[str]:
         "gnina",
         "/usr/local/bin/gnina",
         str(Path.home() / "bin" / "gnina"),
-        "/home/bprieto/bin/gnina",
     ])
 
     for path in paths_to_try:

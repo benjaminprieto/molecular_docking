@@ -34,7 +34,7 @@ Output (por molecula):
 Location: 01_src/molecular_docking/m01_docking/dock6_runner.py
 Project: molecular_docking
 Module: 01b (core)
-Version: 2.2 — DOCK6.13 num_final_scored_poses + num_preclustered_conformers (2026-03-21)
+Version: 2.3 — GB/SA Hawkins implicit solvation option (2026-03-25)
 """
 
 import logging
@@ -99,7 +99,7 @@ continuous_score_secondary                                   no
 pharmacophore_score_secondary                                no
 descriptor_score_secondary                                   no
 gbsa_zou_score_secondary                                     no
-gbsa_hawkins_score_secondary                                 no
+{gbsa_hawkins_block}
 SASA_score_secondary                                         no
 amber_score_secondary                                        no
 minimize_ligand                                              {minimize}
@@ -160,7 +160,7 @@ continuous_score_secondary                                   no
 pharmacophore_score_secondary                                no
 descriptor_score_secondary                                   no
 gbsa_zou_score_secondary                                     no
-gbsa_hawkins_score_secondary                                 no
+{gbsa_hawkins_block}
 SASA_score_secondary                                         no
 amber_score_secondary                                        no
 minimize_ligand                                              {minimize}
@@ -250,9 +250,18 @@ def find_dock6_params() -> Dict[str, str]:
 
     # Log what we found
     found = sum(1 for v in result.values() if "/" in v or "\\" in v)
+    not_found = [k for k, v in result.items() if "/" not in v and "\\" not in v]
     logger.info(f"  DOCK6 parameters: {found}/{len(param_files)} found with full paths")
     for key, path in result.items():
         logger.debug(f"    {key}: {path}")
+
+    if not_found:
+        raise FileNotFoundError(
+            f"DOCK6 parameter files not found: {not_found}. "
+            f"Set DOCK_HOME, DOCK6_HOME, or DOCK_BASE environment variable "
+            f"to your DOCK6 install directory. Searched: "
+            f"{[str(p) for p in search_paths]}"
+        )
 
     return result
 
@@ -344,6 +353,8 @@ def generate_dock6_input(
         "simplex_random_seed": 0,
         # Footprint (per-residue energy decomposition)
         "footprint_block": "footprint_similarity_score_secondary                         no",
+        # GB/SA Hawkins implicit solvation (secondary score)
+        "gbsa_hawkins_block": "gbsa_hawkins_score_secondary                                 no",
         # Output
         "num_scored_conformers": 20,
         "num_final_scored_poses": 100,
@@ -363,6 +374,13 @@ def generate_dock6_input(
     receptor_mol2 = kwargs.pop("receptor_mol2", None)
     reference_mol2 = kwargs.pop("reference_mol2", None)
     compute_footprint = kwargs.pop("compute_footprint_score", False)
+    if compute_footprint:
+        if not receptor_mol2 or not reference_mol2:
+            raise ValueError(
+                "compute_footprint_score=True requires both receptor_mol2 and "
+                f"reference_mol2. Got receptor_mol2={receptor_mol2}, "
+                f"reference_mol2={reference_mol2}"
+            )
     if compute_footprint and receptor_mol2 and reference_mol2:
         template_vars["footprint_block"] = (
             "footprint_similarity_score_secondary                         yes\n"
@@ -380,6 +398,28 @@ def generate_dock6_input(
             "fps_score_vdw_fp_scale                                       1\n"
             "fps_score_es_fp_scale                                        1\n"
             "fps_score_hb_fp_scale                                        0"
+        )
+
+    # Handle GB/SA Hawkins implicit solvation (secondary score)
+    gbsa_hawkins = kwargs.pop("gbsa_hawkins", False)
+    gbsa_solvent_dielectric = kwargs.pop("solvent_dielectric", 78.5)
+    gbsa_salt_concentration = kwargs.pop("salt_concentration", 0.15)
+    gbsa_gb_offset = kwargs.pop("gb_offset", 0.09)
+    if gbsa_hawkins and not receptor_mol2:
+        raise ValueError(
+            "gbsa_hawkins=True requires receptor_mol2. "
+            f"Got receptor_mol2={receptor_mol2}"
+        )
+    if gbsa_hawkins and receptor_mol2:
+        template_vars["gbsa_hawkins_block"] = (
+            "gbsa_hawkins_score_secondary                                 yes\n"
+            f"gbsa_hawkins_score_rec_filename                              {receptor_mol2}\n"
+            f"gbsa_hawkins_score_solvent_dielectric                        {gbsa_solvent_dielectric}\n"
+            f"gbsa_hawkins_score_salt_conc                                 {gbsa_salt_concentration}\n"
+            f"gbsa_hawkins_score_gb_offset                                 {gbsa_gb_offset}\n"
+            "gbsa_hawkins_score_cont_vdw_and_es                           yes\n"
+            "gbsa_hawkins_score_vdw_att_exp                               6\n"
+            "gbsa_hawkins_score_vdw_rep_exp                               12"
         )
 
     # Handle 'minimize' bool -> string

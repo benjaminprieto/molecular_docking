@@ -1,5 +1,5 @@
 # =============================================================================
-# 05c Score Decomposition - Configuration (molecular_docking v2.0)
+# 05c Score Decomposition - Configuration (molecular_docking v3.0)
 # =============================================================================
 # Regresses docking scores onto fragment cluster positions.
 # Answers: "How much does each fragment contribute to the score, and in
@@ -17,7 +17,7 @@
 #
 # Project: molecular_docking
 # Module: 05c
-# Version: 2.0
+# Version: 3.0
 # =============================================================================
 
 parameters:
@@ -26,6 +26,9 @@ parameters:
   # For GNINA: ["vina_affinity", "cnn_score", "cnn_affinity"]
   # For DOCK6: ["Grid_Score", "Grid_vdw", "Grid_es"]
   score_keys: null
+
+  # Path to gnina_scores.csv from 02c (null = auto-detect)
+  gnina_scores_csv: null
 
   # Number of top sweet spot combinations to report per molecule
   n_sweet_spots: 10

@@ -147,7 +147,8 @@ def main():
                 "simplex_trans_step", "simplex_rot_step", "simplex_tors_step",
                 "simplex_random_seed",
                 "num_final_scored_poses", "num_preclustered_conformers",
-                "write_orientations", "compute_footprint_score"]:
+                "write_orientations", "compute_footprint_score",
+                "gbsa_hawkins", "solvent_dielectric", "salt_concentration", "gb_offset"]:
         if key in params:
             extra_params[key] = params[key]
 
@@ -224,6 +225,8 @@ def main():
         logger.info(f"Reference:     {Path(reference_mol2).name} (footprint)")
     else:
         logger.info("Reference:     None (no footprint scoring)")
+    if extra_params.get("gbsa_hawkins"):
+        logger.info(f"GB/SA Hawkins: YES (dielectric={extra_params.get('solvent_dielectric', 78.5)}, salt={extra_params.get('salt_concentration', 0.15)}M)")
     if molecule_filter:
         logger.info(f"Filter:        {molecule_filter}")
     if args.dry_run:

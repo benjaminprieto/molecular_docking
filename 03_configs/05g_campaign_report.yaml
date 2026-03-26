@@ -1,18 +1,30 @@
 # =============================================================================
-# 05g Campaign Report - Configuration
+# 05g Campaign Report - Configuration (molecular_docking v3.0)
 # =============================================================================
-# Generates consolidated HTML report with figures, tables, and text.
+# Generates consolidated HTML report with composite ranking, tables, and figures.
 #
-# INPUT:  05a-05f outputs
+# INPUT:  05a-05f outputs + gnina_scores.csv from 02c (REQUIRED)
 # OUTPUT: 05_results/{campaign_id}/05g_campaign_report/
+#
+# Composite: vina_affinity × weighted_convergence (multiplicative)
+# gnina_scores.csv is MANDATORY — run 02c before 05g.
 #
 # Project: molecular_docking
 # Module: 05g
-# Version: 1.0
+# Version: 3.0
 # =============================================================================
 
 parameters:
   engine: "gnina"
+
+  # gnina_scores.csv is REQUIRED (null = auto-detect from 02c output)
+  gnina_scores_csv: null
+
+  # Number of top molecules shown in each table
+  top_n: 20
+
+  # Composite method
+  composite_method: "multiplicative"  # vina × weighted_conv
 
 outputs:
   subdir: "05g_campaign_report"

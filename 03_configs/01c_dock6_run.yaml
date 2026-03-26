@@ -7,21 +7,12 @@
 #
 # Project: molecular_docking
 # Module: 01c (DOCK6)
-# Version: 4.2 — fixed clustering cutoff + footprint scoring (2026-03-21)
+# Version: 4.3 — GB/SA Hawkins implicit solvation option (2026-03-25)
 #
-# CHANGES v4.1 → v4.2:
-#   - pruning_clustering_cutoff: 100.0 → 2.0 (Å RMSD!)
-#     With 100 Å, DOCK6 merged ALL poses into 1 cluster → only 1 pose output.
-#     2.0 Å preserves diverse binding modes during anchor-and-grow.
-#
-#   - Added compute_footprint_score: true
-#     Decomposes Grid_Score per receptor residue (vdW + ES).
-#     Requires receptor mol2 (from 00b).
-#
-#   - DOCK6 6.13 replaced num_scored_conformers with TWO new params:
-#       num_final_scored_poses: 100       (poses written to output)
-#       num_preclustered_conformers: 500  (poses before final clustering)
-#     The old num_scored_conformers is kept for DOCK6 <6.13 compatibility.
+# CHANGES v4.2 → v4.3:
+#   - Added gbsa_hawkins option (secondary score with implicit solvation).
+#     Corrects in-vacuo electrostatic artifacts for charged residues.
+#     Default: off (adds ~2-5x runtime per molecule).
 # =============================================================================
 
 parameters:
@@ -59,6 +50,22 @@ parameters:
   # Output: footprint columns in scored mol2 header.
   compute_footprint_score: true
 
+  # ┌───────────────────────────────────────────────────────────────┐
+  # │  GB/SA Hawkins — Implicit Solvation (secondary score)        │
+  # │                                                               │
+  # │  Adds Generalized Born / Surface Area solvation correction   │
+  # │  as a secondary score alongside Grid_Score (primary).        │
+  # │  Screens electrostatic interactions that are artificially     │
+  # │  strong in-vacuo (e.g., ASP494⁻ vs PO₄²⁻ repulsion).       │
+  # │                                                               │
+  # │  Enable for: reference crystal analysis, charged pockets     │
+  # │  Disable for: large screening campaigns (adds runtime)       │
+  # └───────────────────────────────────────────────────────────────┘
+  gbsa_hawkins: false
+  solvent_dielectric: 78.5
+  salt_concentration: 0.15
+  gb_offset: 0.09
+
   # --- Output ---
   write_orientations: false
 
@@ -72,5 +79,9 @@ outputs:
 # =============================================================================
 # USAGE
 # =============================================================================
-# python 02_scripts/01c_dock6_run.py --config 03_configs/01c_dock6_run.yaml --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+# # Standard (in-vacuo only):
+# python 02_scripts/01c_dock6_run.py --config 03_configs/01c_dock6_run.yaml \
+#     --campaign 04_data/campaigns/example_campaign/campaign_config.yaml
+#
+# # With GB/SA Hawkins (set gbsa_hawkins: true above, or use reference mode)
 # =============================================================================

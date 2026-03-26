@@ -183,7 +183,6 @@ def find_contact_residues(
                 residue_contacts[res_key]["n_contacts"] += 1
                 if d < residue_contacts[res_key]["min_distance"]:
                     residue_contacts[res_key]["min_distance"] = d
-                break  # one contact per atom is enough
 
     result = sorted(
         residue_contacts.values(),

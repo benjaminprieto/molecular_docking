@@ -14,13 +14,19 @@ Based on Rizzo Lab protocol (run.009) and DOCK6 manual §2.11.9:
   - fps_score_receptor_filename = receptor mol2
   - fps_score_footprint_reference_mol2_filename = reference ligand
 
+v2.0 (2026-03-25): Added GB/SA Hawkins implicit solvation as secondary
+  score. Corrects in-vacuo electrostatic artifacts (e.g., ASP494 repulsion
+  caused by unscreened charge-charge interactions without explicit water).
+  GB/SA gives a global solvation-corrected score per pose; the per-residue
+  footprint remains in-vacuo (DOCK6 limitation).
+
 Input:  01c_dock6_run/{name}/{name}_scored.mol2
 Output: 01d_footprint_rescore/{name}/{name}_fps.mol2
 
 Location: 01_src/molecular_docking/m01_docking/footprint_rescore.py
 Project: molecular_docking
 Module: 01d (core)
-Version: 1.0
+Version: 2.0
 """
 
 import logging
@@ -36,6 +42,10 @@ logger = logging.getLogger(__name__)
 
 # =============================================================================
 # DOCK6 FOOTPRINT RE-SCORE TEMPLATE
+# =============================================================================
+# {gbsa_hawkins_block} is replaced at runtime with either:
+#   - "gbsa_hawkins_score_secondary  no"  (default, in-vacuo only)
+#   - Full GB/SA Hawkins block          (implicit solvation enabled)
 # =============================================================================
 
 FPS_RESCORE_TEMPLATE = """\
@@ -79,7 +89,7 @@ fps_score_hb_fp_scale                            0
 pharmacophore_score_secondary                    no
 descriptor_score_secondary                       no
 gbsa_zou_score_secondary                         no
-gbsa_hawkins_score_secondary                     no
+{gbsa_hawkins_block}
 SASA_score_secondary                             no
 amber_score_secondary                            no
 minimize_ligand                                  no
@@ -94,6 +104,41 @@ write_orientations                               no
 num_scored_conformers                            {num_scored_conformers}
 rank_ligands                                     no
 """
+
+
+# =============================================================================
+# GB/SA HAWKINS BLOCK GENERATORS
+# =============================================================================
+
+def _gbsa_hawkins_block_off() -> str:
+    """Return disabled GB/SA line."""
+    return "gbsa_hawkins_score_secondary                     no"
+
+
+def _gbsa_hawkins_block_on(
+        solvent_dielectric: float = 78.5,
+        salt_concentration: float = 0.15,
+        gb_offset: float = 0.09,
+) -> str:
+    """
+    Return full GB/SA Hawkins block for DOCK6.
+
+    Uses continuous vdW+ES (Cartesian space, consistent with footprint).
+    Solvent dielectric 78.5 = water at 25°C.
+    Salt concentration 0.15 M = physiological (~150 mM NaCl).
+
+    Reference: Hawkins, Cramer, Truhlar. J Phys Chem 1996.
+    DOCK6 manual §2.11.7 (Hawkins GB/SA Score).
+    """
+    return f"""\
+gbsa_hawkins_score_secondary                     yes
+gbsa_hawkins_score_rec_filename                  receptor.mol2
+gbsa_hawkins_score_solvent_dielectric            {solvent_dielectric}
+gbsa_hawkins_score_salt_conc                     {salt_concentration}
+gbsa_hawkins_score_gb_offset                     {gb_offset}
+gbsa_hawkins_score_cont_vdw_and_es               yes
+gbsa_hawkins_score_vdw_att_exp                   6
+gbsa_hawkins_score_vdw_rep_exp                   12"""
 
 
 # =============================================================================
@@ -134,6 +179,10 @@ def run_footprint_rescore(
         dock6_home: str = "/opt/dock6",
         timeout_per_molecule: int = 300,
         molecule_filter: Optional[List[str]] = None,
+        gbsa_hawkins: bool = False,
+        solvent_dielectric: float = 78.5,
+        salt_concentration: float = 0.15,
+        gb_offset: float = 0.09,
 ) -> Dict[str, Any]:
     """
     Re-score all DOCK6 poses with footprint decomposition.
@@ -146,6 +195,10 @@ def run_footprint_rescore(
         dock6_home:     DOCK6 installation path
         timeout_per_molecule: Timeout in seconds per molecule
         molecule_filter: Optional list of molecule names to process
+        gbsa_hawkins:   Enable GB/SA Hawkins implicit solvation (secondary)
+        solvent_dielectric: Solvent dielectric constant (78.5 = water)
+        salt_concentration: Salt concentration in M (0.15 = physiological)
+        gb_offset:      GB radius offset (default 0.09)
 
     Returns:
         Dict with n_total, n_ok, n_failed, results
@@ -180,6 +233,16 @@ def run_footprint_rescore(
     # Find DOCK6 parameter files
     dock6_params = _find_dock6_params(dock6_home)
 
+    # Build GB/SA block
+    if gbsa_hawkins:
+        gbsa_block = _gbsa_hawkins_block_on(
+            solvent_dielectric=solvent_dielectric,
+            salt_concentration=salt_concentration,
+            gb_offset=gb_offset,
+        )
+    else:
+        gbsa_block = _gbsa_hawkins_block_off()
+
     logger.info("=" * 60)
     logger.info("  DOCK6 Footprint Re-scoring")
     logger.info("=" * 60)
@@ -188,6 +251,7 @@ def run_footprint_rescore(
     logger.info(f"  Reference:    {Path(reference_mol2).name}")
     logger.info(f"  Molecules:    {len(molecules)}")
     logger.info(f"  Timeout:      {timeout_per_molecule}s per molecule")
+    logger.info(f"  GB/SA Hawkins: {'YES (dielectric={}, salt={}M)'.format(solvent_dielectric, salt_concentration) if gbsa_hawkins else 'no'}")
 
     results = []
     total_time = 0
@@ -225,6 +289,7 @@ def run_footprint_rescore(
             flex_drive_file=Path(dock6_params["flex_drive_file"]).name,
             output_prefix=f"{name}_fps",
             num_scored_conformers=max(n_poses, 1),
+            gbsa_hawkins_block=gbsa_block,
         )
 
         fps_in_path = mol_out / "dock6_fps.in"
@@ -293,6 +358,8 @@ def run_footprint_rescore(
     logger.info("")
     logger.info(f"{'=' * 60}")
     logger.info(f"  FOOTPRINT: {n_ok}/{len(results)} completed ({total_time:.0f}s)")
+    if gbsa_hawkins:
+        logger.info(f"  GB/SA Hawkins: enabled (scores in mol2 header)")
     logger.info(f"{'=' * 60}")
 
     return {
@@ -301,5 +368,6 @@ def run_footprint_rescore(
         "n_ok": n_ok,
         "n_failed": n_fail,
         "total_runtime_sec": round(total_time, 1),
+        "gbsa_hawkins": gbsa_hawkins,
         "results": results,
     }

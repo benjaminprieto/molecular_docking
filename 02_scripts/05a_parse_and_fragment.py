@@ -75,7 +75,7 @@ def main():
     results_base = Path("05_results") / campaign_id
 
     engine = args.engine or params.get("engine", "gnina")
-    engine_base = results_base / "m05_gnina_analysis"
+    engine_base = results_base / "05_gnina_analysis"
     output_subdir = mc.get("outputs", {}).get("subdir", "05a_parse_and_fragment")
     output_dir = Path(args.output) if args.output else engine_base / output_subdir
 

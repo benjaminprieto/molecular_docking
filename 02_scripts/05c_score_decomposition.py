@@ -15,7 +15,7 @@ Usage:
 
 Project: molecular_docking
 Module: 05c
-Version: 2.0
+Version: 3.0
 """
 
 import argparse
@@ -57,6 +57,8 @@ def main():
     parser.add_argument("--score-key", type=str, default=None,
                         help="Decompose only this score (e.g. vina_affinity)")
     parser.add_argument("--name", type=str, default=None)
+    parser.add_argument("--gnina-scores", type=str, default=None,
+                        help="Path to gnina_scores.csv from 02c (auto-detected if omitted)")
     parser.add_argument("--log-level", type=str, default=None,
                         choices=["DEBUG", "INFO", "WARNING", "ERROR"])
 
@@ -68,7 +70,7 @@ def main():
 
     campaign_dir = Path(args.campaign).parent
     campaign_id = cc.get("campaign_id", campaign_dir.name)
-    results_base = Path("05_results") / campaign_id / "m05_gnina_analysis"
+    results_base = Path("05_results") / campaign_id / "05_gnina_analysis"
 
     output_subdir = mc.get("outputs", {}).get("subdir", "05c_score_decomposition")
     output_dir = Path(args.output) if args.output else results_base / output_subdir
@@ -82,6 +84,14 @@ def main():
     parsed_dir = str(results_base / "05a_parse_and_fragment")
     cluster_dir = str(results_base / "05b_fragment_clustering")
     molecule_names = [args.name] if args.name else None
+
+    # Resolve gnina_scores.csv from 02c
+    gnina_scores_csv = args.gnina_scores or params.get("gnina_scores_csv")
+    if not gnina_scores_csv:
+        auto_path = Path("05_results") / campaign_id / "02c_gnina_scores" / "gnina_scores.csv"
+        if auto_path.exists():
+            gnina_scores_csv = str(auto_path)
+            logger.info(f"  Auto-detected gnina_scores.csv: {gnina_scores_csv}")
 
     logger.info(f"Campaign:     {campaign_id}")
     logger.info(f"Score keys:   {score_keys or 'all'}")
@@ -97,6 +107,7 @@ def main():
         score_keys=score_keys,
         n_sweet_spots=n_sweet_spots,
         molecule_names=molecule_names,
+        gnina_scores_csv=gnina_scores_csv,
     )
 
     if not result.get("success"):

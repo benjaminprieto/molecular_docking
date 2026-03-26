@@ -27,7 +27,7 @@ Saves:  per-molecule contact JSON, contact_summary.csv, hotspot_contacts.csv
 Location: 01_src/molecular_docking/m05_gnina_analysis/contact_mapping.py
 Project: molecular_docking
 Module: 05f (core)
-Version: 2.0
+Version: 3.0 — atomic output + PLIP for top N (2026-03-26)
 """
 
 import json
@@ -41,6 +41,12 @@ import pandas as pd
 
 from .parse_and_fragment import MoleculeData, load_all_molecules
 from .fragment_clustering import MoleculeClusterResult, load_cluster_result
+
+try:
+    from plip.structure.preparation import PDBComplex
+    HAS_PLIP = True
+except ImportError:
+    HAS_PLIP = False
 
 logger = logging.getLogger(__name__)
 
@@ -448,6 +454,8 @@ def save_contact_results(
                     "min_distance": c.min_distance,
                     "n_atom_contacts": c.n_contacts,
                     "contact_type": c.contact_type,
+                    "closest_receptor_atom": c.closest_receptor_atom,
+                    "closest_ligand_atom": c.closest_ligand_atom,
                 })
 
     df = pd.DataFrame(rows)
@@ -457,6 +465,115 @@ def save_contact_results(
     # Hotspot contacts
     if not hotspot_contacts.empty:
         hotspot_contacts.to_csv(output_dir / "hotspot_contacts.csv", index=False)
+
+
+# =============================================================================
+# PLIP INTERACTION ANALYSIS
+# =============================================================================
+
+def run_plip_on_medoid(
+        receptor_pdb: str,
+        ligand_coords: np.ndarray,
+        ligand_elements: List[str],
+        mol_name: str,
+        output_dir: Path,
+) -> List[Dict]:
+    """
+    Run PLIP on receptor + ligand medoid to get geometric interactions.
+
+    Creates temporary PDB: receptor + ligand as HETATM.
+    Returns list of interaction dicts.
+    """
+    if not HAS_PLIP:
+        return []
+
+    import tempfile
+
+    # Build ligand HETATM lines
+    lig_lines = []
+    for i, (coord, elem) in enumerate(zip(ligand_coords, ligand_elements)):
+        atom_name = f"{elem}{i+1:>3d}"[:4]
+        lig_lines.append(
+            f"HETATM{i+1:5d} {atom_name:<4s} LIG A 999    "
+            f"{coord[0]:8.3f}{coord[1]:8.3f}{coord[2]:8.3f}"
+            f"  1.00  0.00          {elem:>2s}"
+        )
+
+    # Combine receptor + ligand
+    rec_text = Path(receptor_pdb).read_text()
+    # Remove END line from receptor
+    rec_lines = [l for l in rec_text.split("\n") if not l.startswith("END")]
+    combined = "\n".join(rec_lines + lig_lines + ["END"])
+
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.pdb', delete=False) as tmp:
+            tmp.write(combined)
+            tmp_path = tmp.name
+
+        mol = PDBComplex()
+        mol.load_pdb(tmp_path)
+        mol.analyze()
+
+        interactions = []
+        for bsite_id in mol.interaction_sets:
+            iset = mol.interaction_sets[bsite_id]
+
+            for hb in iset.hbonds_pdon + iset.hbonds_ldon:
+                interactions.append({
+                    "type": "hbond",
+                    "ligand_atom": hb.atype,
+                    "receptor_residue": f"{hb.restype}{hb.resnr}.{hb.reschain}",
+                    "receptor_atom": hb.d.type if hasattr(hb, 'd') else "",
+                    "distance": round(hb.distance_ad, 2),
+                    "angle": round(hb.angle, 1) if hasattr(hb, 'angle') else None,
+                })
+
+            for hp in iset.hydrophobic_contacts:
+                interactions.append({
+                    "type": "hydrophobic",
+                    "ligand_atom": hp.ligatom_orig_idx,
+                    "receptor_residue": f"{hp.restype}{hp.resnr}.{hp.reschain}",
+                    "receptor_atom": hp.bsatom_orig_idx,
+                    "distance": round(hp.distance, 2),
+                    "angle": None,
+                })
+
+            for sb in iset.saltbridge_lneg + iset.saltbridge_pneg:
+                interactions.append({
+                    "type": "salt_bridge",
+                    "ligand_atom": "",
+                    "receptor_residue": f"{sb.restype}{sb.resnr}.{sb.reschain}",
+                    "receptor_atom": "",
+                    "distance": round(sb.distance, 2),
+                    "angle": None,
+                })
+
+            for ps in iset.pistacking:
+                interactions.append({
+                    "type": "pi_stacking",
+                    "ligand_atom": "",
+                    "receptor_residue": f"{ps.restype}{ps.resnr}.{ps.reschain}",
+                    "receptor_atom": "",
+                    "distance": round(ps.distance, 2),
+                    "angle": round(ps.angle, 1) if hasattr(ps, 'angle') else None,
+                })
+
+        # Save per-molecule PLIP JSON
+        if interactions:
+            plip_json = output_dir / f"{mol_name}_plip.json"
+            with open(plip_json, "w") as f:
+                json.dump({"name": mol_name, "interactions": interactions}, f, indent=2)
+
+        return interactions
+
+    except Exception as e:
+        logger.debug(f"  PLIP failed for {mol_name}: {e}")
+        return []
+    finally:
+        try:
+            Path(tmp_path).unlink(missing_ok=True)
+        except Exception:
+            pass
 
 
 # =============================================================================
@@ -472,6 +589,9 @@ def run_contact_mapping(
         cutoff: float = 4.5,
         max_clusters_per_fragment: int = 3,
         molecule_names: Optional[List[str]] = None,
+        plip_enabled: bool = False,
+        plip_top_n: int = 20,
+        gnina_scores_csv: Optional[str] = None,
 ) -> Dict[str, any]:
     """
     Contact mapping for all molecules.
@@ -480,7 +600,7 @@ def run_contact_mapping(
     Saves: per-molecule JSONs + summary CSVs
     """
     logger.info("=" * 60)
-    logger.info("05f CONTACT MAPPING v2.0")
+    logger.info("05f CONTACT MAPPING v3.0")
     logger.info("=" * 60)
 
     out_path = Path(output_dir)
@@ -535,6 +655,59 @@ def run_contact_mapping(
 
     # Save
     save_contact_results(all_contacts, hotspot_contacts, out_path)
+
+    # PLIP analysis for top N molecules
+    plip_rows = []
+    if plip_enabled and HAS_PLIP:
+        # Determine top N by vina_affinity (from gnina_scores.csv) or by contact count
+        top_molecules = []
+        if gnina_scores_csv and Path(gnina_scores_csv).exists():
+            df_gnina = pd.read_csv(gnina_scores_csv)
+            if 'name' in df_gnina.columns and 'vina_affinity' in df_gnina.columns:
+                df_ok = df_gnina[df_gnina['success'] == True].nsmallest(plip_top_n, 'vina_affinity')
+                top_molecules = df_ok['name'].tolist()
+
+        if not top_molecules:
+            # Fallback: top N by number of contacts
+            if all_contacts:
+                mol_contact_counts = {name: sum(len(fc.contacts) for fc in clist)
+                                      for name, clist in all_contacts.items()}
+                top_molecules = sorted(mol_contact_counts, key=mol_contact_counts.get, reverse=True)[:plip_top_n]
+
+        logger.info(f"  Running PLIP on top {len(top_molecules)} molecules...")
+        for mol_name in top_molecules:
+            if mol_name not in all_mols:
+                continue
+            mol_data = all_mols[mol_name]
+            cluster_result = load_cluster_result(mol_name, cluster_dir)
+            if cluster_result is None or not cluster_result.fragment_results:
+                continue
+
+            # Use medoid of dominant cluster of fragment 0 (typically largest ring)
+            fr0 = cluster_result.fragment_results[0]
+            dom_members = np.where(fr0.labels == fr0.dominant_cluster)[0]
+            if len(dom_members) == 0:
+                continue
+            medoid_idx = _find_medoid(fr0.rmsd_matrix, dom_members)
+
+            # Get ALL atom coords for this pose (not just fragment 0)
+            all_coords = mol_data.coords[medoid_idx]  # (n_atoms, 3)
+            all_elements = mol_data.heavy_atom_elements
+
+            interactions = run_plip_on_medoid(
+                receptor_path, all_coords, all_elements,
+                mol_name, out_path,
+            )
+
+            for ix in interactions:
+                plip_rows.append({"Name": mol_name, **ix})
+
+        if plip_rows:
+            df_plip = pd.DataFrame(plip_rows)
+            df_plip.to_csv(out_path / "plip_interactions_top20.csv", index=False)
+            logger.info(f"  PLIP interactions: {len(plip_rows)} for {df_plip['Name'].nunique()} molecules")
+    elif plip_enabled and not HAS_PLIP:
+        logger.warning("  PLIP requested but not installed (pip install plip)")
 
     # Stats
     total_contacts = sum(len(c.contacts) for cl in all_contacts.values() for c in cl)

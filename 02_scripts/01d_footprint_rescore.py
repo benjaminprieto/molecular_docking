@@ -5,6 +5,10 @@
 Re-scores existing DOCK6 poses with per-residue energy decomposition
 (VDW + ES + H-bond footprints in Cartesian space).
 
+v2.0 (2026-03-25): Added GB/SA Hawkins implicit solvation support.
+  Enable in YAML (gbsa_hawkins: true) or CLI (--gbsa-hawkins).
+  Corrects in-vacuo electrostatic artifacts for charged residues.
+
 This is a POST-DOCKING step that reads scored mol2 from 01c.
 Based on Rizzo Lab protocol and DOCK6 manual §2.11.9.
 
@@ -12,13 +16,20 @@ Input:  05_results/{campaign}/01c_dock6_run/{name}/{name}_scored.mol2
 Output: 05_results/{campaign}/01d_footprint_rescore/{name}/{name}_fps_scored.mol2
 
 Usage:
+    # Standard (in-vacuo footprint only):
     python 02_scripts/01d_footprint_rescore.py \\
         --config 03_configs/01d_footprint_rescore.yaml \\
-        --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
+        --campaign 04_data/campaigns/UDX_reference_pH63/campaign_config.yaml
+
+    # With GB/SA Hawkins implicit solvation:
+    python 02_scripts/01d_footprint_rescore.py \\
+        --config 03_configs/01d_footprint_rescore.yaml \\
+        --campaign 04_data/campaigns/UDX_reference_pH63/campaign_config.yaml \\
+        --gbsa-hawkins
 
 Project: molecular_docking
 Module: 01d (DOCK6 engine)
-Version: 1.0
+Version: 2.0
 """
 
 import argparse
@@ -61,6 +72,8 @@ def main():
     parser.add_argument("--output", "-o", type=str, default=None)
     parser.add_argument("--name", type=str, default=None, help="Single molecule")
     parser.add_argument("--timeout", type=int, default=None)
+    parser.add_argument("--gbsa-hawkins", action="store_true",
+                        help="Enable GB/SA Hawkins implicit solvation (overrides YAML)")
     parser.add_argument("--log-level", type=str, default=None,
                         choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     args = parser.parse_args()
@@ -113,6 +126,12 @@ def main():
     log_level = args.log_level or params.get("log_level", "INFO")
     molecule_filter = [args.name] if args.name else None
 
+    # GB/SA Hawkins: CLI flag overrides YAML
+    gbsa_hawkins = args.gbsa_hawkins or params.get("gbsa_hawkins", False)
+    solvent_dielectric = params.get("solvent_dielectric", 78.5)
+    salt_concentration = params.get("salt_concentration", 0.15)
+    gb_offset = params.get("gb_offset", 0.09)
+
     # --- Logging ---
     logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
     log_path = Path(output_dir) / "01d_footprint_rescore.log"
@@ -122,11 +141,12 @@ def main():
     logger.info("=" * 60)
     logger.info("  MOLECULAR_DOCKING - Module 01d: Footprint Re-scoring")
     logger.info("=" * 60)
-    logger.info(f"Campaign:    {campaign_id}")
-    logger.info(f"Docking dir: {docking_dir}")
-    logger.info(f"Receptor:    {Path(receptor_mol2).name}")
-    logger.info(f"Reference:   {Path(reference_mol2).name}")
-    logger.info(f"Output:      {output_dir}")
+    logger.info(f"Campaign:     {campaign_id}")
+    logger.info(f"Docking dir:  {docking_dir}")
+    logger.info(f"Receptor:     {Path(receptor_mol2).name}")
+    logger.info(f"Reference:    {Path(reference_mol2).name}")
+    logger.info(f"Output:       {output_dir}")
+    logger.info(f"GB/SA Hawkins: {'YES' if gbsa_hawkins else 'no'}")
 
     result = run_footprint_rescore(
         docking_dir=docking_dir,
@@ -136,6 +156,10 @@ def main():
         dock6_home=dock6_home,
         timeout_per_molecule=timeout_per_molecule,
         molecule_filter=molecule_filter,
+        gbsa_hawkins=gbsa_hawkins,
+        solvent_dielectric=solvent_dielectric,
+        salt_concentration=salt_concentration,
+        gb_offset=gb_offset,
     )
 
     if not result.get("success"):

@@ -10,7 +10,7 @@ Usage:
 
 Project: molecular_docking
 Module: 05g
-Version: 1.0
+Version: 3.0 — uses actual Vina affinity from 02c (torsion-corrected)
 """
 
 import argparse
@@ -41,6 +41,8 @@ def main():
                         help='Reference mol2 for RMSD validation (e.g. crystallographic ligand)')
     parser.add_argument('--control-name', type=str, default='UDX',
                         help='Name of control molecule to compute RMSD against reference')
+    parser.add_argument('--gnina-scores', type=str, default=None,
+                        help='Path to gnina_scores.csv from 02c (auto-detected if omitted)')
     parser.add_argument('--name', type=str, default=None, help='Filter single molecule')
     args = parser.parse_args()
 
@@ -55,8 +57,18 @@ def main():
         mc = load_yaml(args.config)
         params = mc.get('parameters', {})
 
-    results_base = Path('05_results') / campaign_id / 'm05_gnina_analysis'
+    # Results directory
+    results_base = Path('05_results') / campaign_id / '05_gnina_analysis'
     output_dir = args.output or str(results_base / '05g_campaign_report')
+
+    # Setup log file
+    out_p = Path(output_dir)
+    out_p.mkdir(parents=True, exist_ok=True)
+    log_path = out_p / "05g_campaign_report.log"
+    fh = logging.FileHandler(str(log_path), encoding="utf-8")
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-8s | %(message)s"))
+    logging.getLogger().addHandler(fh)
 
     # Reference mol2 for RMSD validation
     reference_mol2 = args.reference
@@ -67,13 +79,26 @@ def main():
         if auto_ref.exists():
             reference_mol2 = str(auto_ref)
 
+    # GNINA scores CSV from 02c (MANDATORY in v3.0)
+    gnina_scores_csv = args.gnina_scores
+    if not gnina_scores_csv:
+        auto_gnina = Path('05_results') / campaign_id / '02c_gnina_scores' / 'gnina_scores.csv'
+        if auto_gnina.exists():
+            gnina_scores_csv = str(auto_gnina)
+            logger.info(f"  Auto-detected gnina_scores.csv: {gnina_scores_csv}")
+        else:
+            logger.error(f"  gnina_scores.csv not found at {auto_gnina}")
+            logger.error("  This file is REQUIRED for campaign report v3.0. Run 02c first.")
+            return 1
+
     logger.info("=" * 60)
-    logger.info(f"M05g: CAMPAIGN REPORT")
+    logger.info(f"M05g: CAMPAIGN REPORT v3.0")
     logger.info("=" * 60)
-    logger.info(f"Campaign:  {campaign_id}")
-    logger.info(f"Engine:    {engine}")
-    logger.info(f"Reference: {reference_mol2 or 'none'}")
-    logger.info(f"Output:    {output_dir}")
+    logger.info(f"Campaign:     {campaign_id}")
+    logger.info(f"Engine:       {engine}")
+    logger.info(f"Reference:    {reference_mol2 or 'none'}")
+    logger.info(f"GNINA scores: {gnina_scores_csv or 'none (fallback to atom_terms)'}")
+    logger.info(f"Output:       {output_dir}")
 
     result = run_campaign_report(
         parsed_dir=str(results_base / '05a_parse_and_fragment'),
@@ -86,6 +111,7 @@ def main():
         engine=engine,
         reference_mol2=reference_mol2,
         control_name=args.control_name,
+        gnina_scores_csv=gnina_scores_csv,
     )
 
     if not result.get('success'):

@@ -68,7 +68,7 @@ def main():
 
     campaign_dir = Path(args.campaign).parent
     campaign_id = cc.get("campaign_id", campaign_dir.name)
-    results_base = Path("05_results") / campaign_id / "m05_gnina_analysis"
+    results_base = Path("05_results") / campaign_id / "05_gnina_analysis"
 
     output_subdir = mc.get("outputs", {}).get("subdir", "05b_fragment_clustering")
     output_dir = Path(args.output) if args.output else results_base / output_subdir

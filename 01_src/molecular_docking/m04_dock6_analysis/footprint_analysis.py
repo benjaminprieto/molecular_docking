@@ -54,6 +54,332 @@ logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# BINDING SITE ZONE CLASSIFICATION
+# =============================================================================
+# Sub-pocket classification from UDX PLIP analysis (06a).
+# Used to group residues into functional zones for visualization.
+# These are specific to the XT1/UDX system — future: make configurable.
+
+ZONE_DEFINITIONS = {
+    "phosphate": {
+        "residues": {"ARG598", "LYS599"},
+        "color": "#1D9E75",
+        "label": "Phosphate (salt bridges)",
+        "druglike": False,
+        "description": "Requires charged groups (phosphate, carboxylate). Pharmit selects nucleotides.",
+    },
+    "xylose": {
+        "residues": {"TRP392", "TRP495", "TYR565", "SER575"},
+        "color": "#378ADD",
+        "label": "Xylose pocket",
+        "druglike": True,
+        "description": "HBA from heterocycles (oxazol, furan, amide). Drug-like compatible.",
+    },
+    "ribose": {
+        "residues": {"HIS335", "VAL333", "THR390"},
+        "color": "#7F77DD",
+        "label": "Ribose / base recognition",
+        "druglike": True,
+        "description": "Aromatic stacking (HIS335) + HBA/HBD. Drug-like compatible.",
+    },
+    "uracil": {
+        "residues": {"ASP361", "ARG363"},
+        "color": "#BA7517",
+        "label": "Uracil pocket",
+        "druglike": True,
+        "description": "Weak energy but selective. Only extended molecules reach it.",
+    },
+    "catalytic": {
+        "residues": {"GLU529"},
+        "color": "#888780",
+        "label": "Catalytic (GLU529)",
+        "druglike": True,
+        "description": "Functionally critical but low energy. Covered implicitly by xylose proximity.",
+    },
+}
+
+
+def _classify_residue_zone(residue_name: str) -> str:
+    """Classify a residue into a binding site zone."""
+    for zone_id, zdef in ZONE_DEFINITIONS.items():
+        if residue_name in zdef["residues"]:
+            return zone_id
+    return "other"
+
+
+# =============================================================================
+# BINDING SITE ZONES HTML REPORT
+# =============================================================================
+
+def generate_zones_html(
+        df_consensus: pd.DataFrame,
+        plip_json_path: Optional[str] = None,
+        contact_csv_path: Optional[str] = None,
+        campaign_id: str = "",
+        n_molecules: int = 0,
+) -> str:
+    """
+    Generate binding site zones HTML from residue consensus data.
+
+    Cross-references:
+        - DOCK6 footprint energy (from df_consensus — always available)
+        - PLIP interactions (from 03a JSON — optional)
+        - GNINA contact frequency (from 05f CSV — optional)
+
+    Args:
+        df_consensus: residue_consensus.csv as DataFrame
+        plip_json_path: Path to 03a interactions.json (optional)
+        contact_csv_path: Path to 05f contact_summary.csv (optional)
+        campaign_id: Campaign name for title
+        n_molecules: Number of molecules in campaign
+
+    Returns:
+        HTML string
+    """
+    from datetime import datetime
+
+    # --- Load PLIP interactions (optional) ---
+    plip_features = {}
+    if plip_json_path and Path(plip_json_path).exists():
+        with open(plip_json_path) as f:
+            plip_data = json.load(f)
+        for ix in plip_data.get("interactions", []):
+            res_name = ix.get("residue_name", "")
+            res_num = ix.get("residue_number", "")
+            key = f"{res_name}{res_num}"
+            itype = ix.get("type", "unknown")
+            dist = ix.get("distance", 0)
+            if key not in plip_features:
+                plip_features[key] = []
+            plip_features[key].append({"type": itype, "distance": dist})
+
+    # --- Load contact frequency (optional, from 05f) ---
+    contact_freq = {}
+    n_contact_mols = 0
+    if contact_csv_path and Path(contact_csv_path).exists():
+        df_contacts = pd.read_csv(contact_csv_path)
+        n_contact_mols = df_contacts["Name"].nunique()
+        for res_id, grp in df_contacts.groupby("residue_id"):
+            contact_freq[res_id] = {
+                "n_molecules": grp["Name"].nunique(),
+                "fraction": grp["Name"].nunique() / n_contact_mols if n_contact_mols > 0 else 0,
+            }
+
+    # --- Group residues by zone ---
+    zone_data = {}
+    for zone_id, zdef in ZONE_DEFINITIONS.items():
+        # Match by residue_id prefix (e.g., "TRP392" from "TRP392.A")
+        zone_rows = df_consensus[
+            df_consensus["residue_id"].apply(
+                lambda rid: rid.split(".")[0] in zdef["residues"]
+            )
+        ].copy()
+        if zone_rows.empty:
+            continue
+
+        total_energy = zone_rows["mean_total"].sum()
+        total_vdw = zone_rows["mean_vdw"].sum()
+        total_es = zone_rows["mean_es"].sum()
+
+        # Reference energy (from UDX crystal)
+        ref_energy = 0
+        if "ref_vdw" in zone_rows.columns and "ref_es" in zone_rows.columns:
+            ref_energy = (zone_rows["ref_vdw"] + zone_rows["ref_es"]).sum()
+
+        residues = []
+        for _, row in zone_rows.iterrows():
+            res_name_short = row["residue_name"]
+            res_id = row["residue_id"]
+            ref_tot = (row.get("ref_vdw", 0) or 0) + (row.get("ref_es", 0) or 0)
+
+            # PLIP features for this residue (keyed by e.g. "TRP392")
+            res_id_prefix = res_id.split(".")[0]
+            plip_list = plip_features.get(res_id_prefix, [])
+
+            # Contact freq from 05f
+            cf = contact_freq.get(res_id, {})
+
+            residues.append({
+                "res_id": res_id,
+                "res_name": res_name_short,
+                "mean_total": row["mean_total"],
+                "mean_vdw": row["mean_vdw"],
+                "mean_es": row["mean_es"],
+                "ref_total": ref_tot,
+                "freq": row["frac_contributing"],
+                "plip": plip_list,
+                "contact_frac": cf.get("fraction", None),
+                "contact_n": cf.get("n_molecules", None),
+            })
+
+        residues.sort(key=lambda r: r["mean_total"])
+
+        zone_data[zone_id] = {
+            "label": zdef["label"],
+            "color": zdef["color"],
+            "druglike": zdef["druglike"],
+            "description": zdef["description"],
+            "total_energy": round(total_energy, 2),
+            "total_vdw": round(total_vdw, 2),
+            "total_es": round(total_es, 2),
+            "ref_energy": round(ref_energy, 2),
+            "residues": residues,
+        }
+
+    # Also collect "other" residues with significant energy
+    classified_ids = set()
+    for zdef in ZONE_DEFINITIONS.values():
+        classified_ids |= zdef["residues"]
+
+    other_rows = df_consensus[
+        (~df_consensus["residue_id"].apply(
+            lambda rid: rid.split(".")[0] in classified_ids
+        )) &
+        (df_consensus["mean_total"] < -0.5)
+    ].head(15)
+
+    max_energy = min(z["total_energy"] for z in zone_data.values()) if zone_data else -1
+
+    # --- Generate HTML ---
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Binding Site Zones: {campaign_id}</title>
+<style>
+body{{font-family:'Segoe UI',Arial,sans-serif;max-width:900px;margin:0 auto;padding:20px;background:#fafafa;color:#333}}
+h1{{color:#1a5276;border-bottom:3px solid #1a5276;padding-bottom:10px;font-size:22px}}
+h2{{color:#2c3e50;margin-top:30px;font-size:18px}}
+.meta{{font-size:12px;color:#777;margin:5px 0 20px}}
+.zone{{border:1px solid #ddd;border-radius:8px;padding:14px 16px;margin:0 0 12px;background:white}}
+.zone-head{{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px}}
+.zone-name{{font-size:15px;font-weight:600}}
+.zone-energy{{font-family:monospace;font-size:14px;font-weight:600}}
+.zone-bar{{height:10px;border-radius:5px;margin:6px 0}}
+.zone-desc{{font-size:12px;color:#666;margin:4px 0 8px}}
+.badge{{display:inline-block;font-size:10px;padding:2px 8px;border-radius:6px;font-weight:600}}
+.badge-ok{{background:#e8f8f5;color:#1e8449}}
+.badge-no{{background:#fdedec;color:#c0392b}}
+.badge-warn{{background:#fef9e7;color:#b7950b}}
+.res-tbl{{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0 0}}
+.res-tbl th{{text-align:left;padding:4px 6px;color:#777;font-weight:500;border-bottom:1px solid #eee;font-size:11px}}
+.res-tbl td{{padding:4px 6px;border-bottom:1px solid #f5f5f5}}
+.res-tbl tr:hover{{background:#f0f7ff}}
+.mono{{font-family:monospace;font-size:11px}}
+.plip-tag{{display:inline-block;font-size:10px;padding:1px 5px;border-radius:3px;background:#eef2ff;color:#5b6abf;margin:1px}}
+.bar-bg{{background:#f0f0f0;height:6px;border-radius:3px;display:inline-block;width:80px;vertical-align:middle}}
+.bar-fill{{height:6px;border-radius:3px;display:inline-block}}
+.summary{{display:flex;gap:15px;flex-wrap:wrap;margin:15px 0}}
+.stat{{background:white;border:1px solid #ddd;border-radius:8px;padding:12px;min-width:130px;text-align:center}}
+.stat-val{{font-size:20px;font-weight:bold;color:#2980b9}}
+.stat-lbl{{font-size:10px;color:#777}}
+.other-tbl{{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}}
+.other-tbl th{{text-align:left;padding:4px 8px;color:#777;font-weight:500;border-bottom:1px solid #ddd;font-size:11px}}
+.other-tbl td{{padding:4px 8px;border-bottom:1px solid #f0f0f0}}
+.footer{{margin-top:30px;padding-top:10px;border-top:1px solid #ddd;font-size:11px;color:#999}}
+</style></head><body>
+
+<h1>Binding site zones: {campaign_id}</h1>
+<p class="meta">Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')} | Molecules: {n_molecules}
+{' | PLIP: ' + str(len(plip_features)) + ' residues' if plip_features else ''}
+{' | Contacts (05f): ' + str(n_contact_mols) + ' molecules' if n_contact_mols else ''}</p>
+
+<div class="summary">
+  <div class="stat"><div class="stat-val">{len(zone_data)}</div><div class="stat-lbl">Zones defined</div></div>
+  <div class="stat"><div class="stat-val">{sum(len(z['residues']) for z in zone_data.values())}</div><div class="stat-lbl">Key residues</div></div>
+  <div class="stat"><div class="stat-val">{sum(1 for z in zone_data.values() if z['druglike'])}</div><div class="stat-lbl">Drug-like zones</div></div>
+  <div class="stat"><div class="stat-val">{sum(z['total_energy'] for z in zone_data.values()):.1f}</div><div class="stat-lbl">Total energy</div></div>
+</div>
+
+<h2>Zones ranked by energy</h2>
+"""
+
+    for zone_id, zd in sorted(zone_data.items(), key=lambda x: x[1]["total_energy"]):
+        bar_pct = min(100, abs(zd["total_energy"]) / abs(max_energy) * 100) if max_energy != 0 else 0
+        dl_badge = '<span class="badge badge-ok">drug-like</span>' if zd["druglike"] else '<span class="badge badge-no">not drug-like</span>'
+
+        html += f"""
+<div class="zone" style="border-left:4px solid {zd['color']}">
+  <div class="zone-head">
+    <div class="zone-name" style="color:{zd['color']}">{zd['label']}</div>
+    <div class="zone-energy" style="color:{zd['color']}">{zd['total_energy']:+.2f} kcal/mol</div>
+  </div>
+  <div class="zone-bar" style="background:#f0f0f0"><div style="width:{bar_pct:.0f}%;height:10px;border-radius:5px;background:{zd['color']};opacity:0.7"></div></div>
+  <div class="zone-desc">{zd['description']} {dl_badge}
+    {f'<br>Reference (UDX crystal): <b>{zd["ref_energy"]:+.2f}</b> kcal/mol' if abs(zd['ref_energy']) > 0.01 else ''}</div>
+  <table class="res-tbl">
+    <tr>
+      <th>Residue</th>
+      <th>Energy</th>
+      <th>vdW</th>
+      <th>ES</th>
+      <th>Ref energy</th>
+      <th>DOCK6 freq</th>
+      {'<th>Contact freq (05f)</th>' if n_contact_mols else ''}
+      {'<th>PLIP features</th>' if plip_features else ''}
+    </tr>"""
+
+        for res in zd["residues"]:
+            ref_str = f"{res['ref_total']:+.2f}" if abs(res['ref_total']) > 0.01 else "—"
+            freq_str = f"{res['freq']:.0%}"
+
+            cf_str = ""
+            if n_contact_mols and res['contact_frac'] is not None:
+                cf_str = f"<td>{res['contact_frac']:.0%} ({res['contact_n']}/{n_contact_mols})</td>"
+            elif n_contact_mols:
+                cf_str = "<td style='color:#ccc'>—</td>"
+
+            plip_str = ""
+            if plip_features:
+                tags = "".join(
+                    f'<span class="plip-tag">{p["type"]} {p["distance"]:.1f}A</span>'
+                    for p in res["plip"]
+                )
+                empty_plip = '<span style="color:#ccc">—</span>'
+                plip_str = f"<td>{tags if tags else empty_plip}</td>"
+
+            html += f"""
+    <tr>
+      <td><b>{res['res_id']}</b></td>
+      <td class="mono">{res['mean_total']:+.3f}</td>
+      <td class="mono">{res['mean_vdw']:+.3f}</td>
+      <td class="mono">{res['mean_es']:+.3f}</td>
+      <td class="mono">{ref_str}</td>
+      <td>{freq_str}</td>
+      {cf_str}
+      {plip_str}
+    </tr>"""
+
+        html += """
+  </table>
+</div>"""
+
+    # --- Other significant residues ---
+    if len(other_rows) > 0:
+        html += """
+<h2>Other contributing residues (not in defined zones)</h2>
+<p style="font-size:12px;color:#777">Residues with mean energy &lt; -0.5 kcal/mol not assigned to any zone.</p>
+<table class="other-tbl">
+  <tr><th>Residue</th><th>Energy</th><th>vdW</th><th>ES</th><th>Freq</th></tr>"""
+        for _, row in other_rows.iterrows():
+            html += f"""
+  <tr>
+    <td><b>{row['residue_id']}</b></td>
+    <td class="mono">{row['mean_total']:+.3f}</td>
+    <td class="mono">{row['mean_vdw']:+.3f}</td>
+    <td class="mono">{row['mean_es']:+.3f}</td>
+    <td>{row['frac_contributing']:.0%}</td>
+  </tr>"""
+        html += "\n</table>"
+
+    html += f"""
+<div class="footer">
+  molecular_docking | Module 04b | Footprint Analysis v3.1 | {datetime.now().strftime('%Y-%m-%d %H:%M')}
+</div>
+</body></html>"""
+
+    return html
+
+
+# =============================================================================
 # RESIDUE MAPPING: mol2 sequential → PDB original
 # =============================================================================
 
@@ -308,6 +634,9 @@ def run_footprint_analysis(
         pharmacophore_threshold: float = 0.8,
         energy_cutoff: float = -0.5,
         best_pose_only: bool = True,
+        plip_json: Optional[str] = None,
+        contact_csv: Optional[str] = None,
+        campaign_id: str = "",
 ) -> Dict[str, Any]:
     """
     Analyze DOCK6 footprint re-scoring results.
@@ -562,6 +891,22 @@ def run_footprint_analysis(
                         f"(mean={r['mean_total']:.2f} kcal/mol)")
     logger.info("=" * 60)
 
+    # --- Generate binding site zones HTML ---
+    zones_html_path = None
+    try:
+        html = generate_zones_html(
+            df_consensus=df_consensus,
+            plip_json_path=plip_json,
+            contact_csv_path=contact_csv,
+            campaign_id=campaign_id,
+            n_molecules=n_parsed,
+        )
+        zones_html_path = output_dir / "binding_site_zones.html"
+        zones_html_path.write_text(html, encoding="utf-8")
+        logger.info(f"  Zones report: {zones_html_path}")
+    except Exception as e:
+        logger.warning(f"  Zones HTML generation failed: {e}")
+
     return {
         "success": True,
         "n_molecules": n_parsed,
@@ -573,5 +918,6 @@ def run_footprint_analysis(
         "pharmacophore_json": str(pharma_json),
         "vs_reference_csv": str(ref_csv) if ref_csv else None,
         "molecule_summary_csv": str(summary_csv),
+        "zones_html": str(zones_html_path) if zones_html_path else None,
         "output_dir": str(output_dir),
     }
