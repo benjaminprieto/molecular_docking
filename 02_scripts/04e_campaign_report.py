@@ -81,12 +81,19 @@ def main():
     if auto_mol.exists():
         molecules_csv = str(auto_mol)
 
+    # All poses CSV from 01e (for mean Grid_Score composite)
+    all_poses_csv = None
+    auto_poses = Path('05_results') / campaign_id / '01e_score_collection' / 'dock6_all_poses.csv'
+    if auto_poses.exists():
+        all_poses_csv = str(auto_poses)
+
     logger.info("=" * 60)
-    logger.info("M04e: DOCK6 CAMPAIGN REPORT v3.0")
+    logger.info("M04e: DOCK6 CAMPAIGN REPORT v4.0")
     logger.info("=" * 60)
     logger.info(f"Campaign:       {campaign_id}")
     logger.info(f"Results base:   {results_base}")
     logger.info(f"Output:         {output_dir}")
+    logger.info(f"All poses:      {all_poses_csv or 'not found'}")
     logger.info(f"Drug-likeness:  {gnina_scores_csv or molecules_csv or 'none'}")
 
     result = run_campaign_report(
@@ -95,6 +102,7 @@ def main():
         campaign_id=campaign_id,
         gnina_scores_csv=gnina_scores_csv,
         molecules_csv=molecules_csv,
+        all_poses_csv=all_poses_csv,
     )
 
     if not result.get('success'):

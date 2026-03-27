@@ -16,7 +16,7 @@ Saves: campaign_report.html + figures/ directory + composite_ranking.csv
 Location: 01_src/molecular_docking/m04_dock6_analysis/campaign_report.py
 Project: molecular_docking
 Module: 04e (DOCK6 analysis)
-Version: 3.0 (2026-03-27) — multiplicative composite (Grid_Score × weighted_consistency)
+Version: 4.0 (2026-03-27) — composite = mean Grid_Score across all poses
 
 Reference: Balius et al. J Chem Inf Model 2011, 51(8):1942-56
 """
@@ -347,46 +347,56 @@ def _html_table(df: pd.DataFrame, columns: list = None, max_rows: int = 50) -> s
 
 def _build_composite_ranking(
         score_csv: str,
-        consistency_csv: Optional[str] = None,
-        modes_csv: Optional[str] = None,
+        all_poses_csv: Optional[str] = None,
 ) -> pd.DataFrame:
     """
-    Build multiplicative composite ranking: Grid_Score × weighted_consistency.
+    Build composite ranking: mean Grid_Score across all binding modes.
+
+    The mean captures whether a molecule binds well in ALL modes (consistent)
+    or only in one outlier pose. More negative mean = better.
     """
     df = pd.read_csv(score_csv)
 
-    # Get Grid_Score column
+    # Get Grid_Score column (best pose)
     score_col = "Grid_Score" if "Grid_Score" in df.columns else df.columns[1]
 
-    # Merge consistency data
-    if consistency_csv and Path(consistency_csv).exists():
-        df_cons = pd.read_csv(consistency_csv)
-        if "Name" in df_cons.columns and "weighted_consistency" in df_cons.columns:
-            df = df.merge(df_cons[["Name", "n_poses", "weighted_consistency",
-                                    "n_consistent_residues", "n_significant_residues"]],
-                         on="Name", how="left")
+    # Compute per-molecule stats from all poses
+    if all_poses_csv and Path(all_poses_csv).exists():
+        df_poses = pd.read_csv(all_poses_csv)
+        pose_score_col = "Grid_Score" if "Grid_Score" in df_poses.columns else df_poses.columns[1]
 
-    # Fill missing consistency with 1.0 (don't penalize if no data)
-    if "weighted_consistency" not in df.columns:
-        df["weighted_consistency"] = 1.0
-    df["weighted_consistency"] = df["weighted_consistency"].fillna(1.0)
+        pose_stats = df_poses.groupby("Name").agg(
+            mean_Grid_Score=(pose_score_col, "mean"),
+            n_modes=(pose_score_col, "count"),
+            best_Grid_Score=(pose_score_col, "min"),
+            worst_Grid_Score=(pose_score_col, "max"),
+        ).reset_index()
+        pose_stats["spread"] = pose_stats["worst_Grid_Score"] - pose_stats["best_Grid_Score"]
+        pose_stats["ratio"] = np.where(
+            pose_stats["best_Grid_Score"] != 0,
+            pose_stats["mean_Grid_Score"] / pose_stats["best_Grid_Score"],
+            0.0,
+        )
 
-    # Merge modes (informational only)
-    if modes_csv and Path(modes_csv).exists():
-        df_modes = pd.read_csv(modes_csv)
-        merge_cols = [c for c in ["Name", "n_modes", "score_spread"] if c in df_modes.columns]
-        if merge_cols and "Name" in merge_cols:
-            df = df.merge(df_modes[merge_cols], on="Name", how="left")
+        df = df.merge(pose_stats, on="Name", how="left")
+    else:
+        # Fallback: use best Grid_Score as mean (no all_poses data)
+        df["mean_Grid_Score"] = df[score_col]
+        df["n_modes"] = 1
+        df["spread"] = 0.0
+        df["ratio"] = 1.0
+        logger.warning("  No all_poses_csv — composite = best Grid_Score (no multi-mode analysis)")
 
     df = df.fillna(0)
 
-    # Composite = Grid_Score × weighted_consistency
-    # More negative = better (Grid_Score is negative, consistency is 0-1)
-    df["composite"] = df[score_col] * df["weighted_consistency"]
+    # Composite = mean Grid_Score (simple, interpretable, kcal/mol)
+    df["composite"] = df["mean_Grid_Score"]
 
     # Sort by composite (most negative first = best)
     df = df.sort_values("composite", ascending=True).reset_index(drop=True)
-    df.insert(0, "Rank", range(1, len(df) + 1))
+    df["Rank"] = range(1, len(df) + 1)
+    cols = ["Rank"] + [c for c in df.columns if c != "Rank"]
+    df = df[cols]
 
     return df
 
@@ -407,6 +417,7 @@ def _generate_html(
         n_molecules: int,
         df_drug: Optional[pd.DataFrame] = None,
         df_residue_per_pose: Optional[pd.DataFrame] = None,
+        df_all_poses: Optional[pd.DataFrame] = None,
 ) -> str:
     """Generate the complete HTML report with 3 tables + detail cards."""
 
@@ -451,7 +462,8 @@ def _generate_html(
     # --- TABLE 1: Top 20 by Grid_Score (raw) ---
     df_table1 = df_display.nsmallest(20, score_col).copy()
     df_table1 = df_table1.reset_index(drop=True)
-    df_table1.insert(0, "GS_Rank", range(1, len(df_table1) + 1))
+    df_table1["GS_Rank"] = range(1, len(df_table1) + 1)
+    df_table1 = df_table1[["GS_Rank"] + [c for c in df_table1.columns if c != "GS_Rank"]]
     table1_cols = ["GS_Rank", "Name", score_col]
     if "Grid_vdw_energy" in df_table1.columns:
         table1_cols.append("Grid_vdw_energy")
@@ -464,16 +476,18 @@ def _generate_html(
             table1_cols.append(dc)
     table1_html = _html_table(df_table1, table1_cols)
 
-    # --- TABLE 2: Top 20 by Composite ---
+    # --- TABLE 2: Top 20 by Composite (mean Grid_Score) ---
     df_table2 = df_display.head(20).copy()
-    table2_cols = ["Rank", "Name", score_col]
-    if "weighted_consistency" in df_table2.columns:
-        table2_cols.append("weighted_consistency")
-    table2_cols.append("composite")
-    if "n_poses" in df_table2.columns:
-        table2_cols.append("n_poses")
-    if "n_consistent_residues" in df_table2.columns:
-        table2_cols.append("n_consistent_residues")
+    table2_cols = ["Rank", "Name"]
+    if "best_Grid_Score" in df_table2.columns:
+        table2_cols.append("best_Grid_Score")
+    table2_cols.append("composite")  # = mean_Grid_Score
+    if "n_modes" in df_table2.columns:
+        table2_cols.append("n_modes")
+    if "spread" in df_table2.columns:
+        table2_cols.append("spread")
+    if "ratio" in df_table2.columns:
+        table2_cols.append("ratio")
     for dc in ["MW", "QED"]:
         if dc in df_table2.columns:
             table2_cols.append(dc)
@@ -491,7 +505,8 @@ def _generate_html(
             df_res["importance"] = df_res["frac_contributing"] * df_res["mean_total"].abs()
             df_res = df_res.sort_values("importance", ascending=False).reset_index(drop=True)
         df_res_top = df_res.head(20).copy()
-        df_res_top.insert(0, "Res_Rank", range(1, len(df_res_top) + 1))
+        df_res_top["Res_Rank"] = range(1, len(df_res_top) + 1)
+        df_res_top = df_res_top[["Res_Rank"] + [c for c in df_res_top.columns if c != "Res_Rank"]]
         res_cols = ["Res_Rank", "residue_id"]
         if "n_molecules" in df_res_top.columns:
             res_cols.append("n_molecules")
@@ -512,27 +527,32 @@ def _generate_html(
     top20_composite = df_display.head(20)
     for _, mol_row in top20_composite.iterrows():
         mol_name = mol_row["Name"]
-        gs = mol_row.get(score_col, 0)
-        wc = mol_row.get("weighted_consistency", 0)
+        best_gs = mol_row.get("best_Grid_Score", mol_row.get(score_col, 0))
         comp = mol_row.get("composite", 0)
-        n_p = mol_row.get("n_poses", 0)
+        n_m = mol_row.get("n_modes", 0)
+        spread_val = mol_row.get("spread", 0)
+        ratio_val = mol_row.get("ratio", 0)
         mw_val = mol_row.get("MW", "N/A")
         qed_val = mol_row.get("QED", "N/A")
+        tpsa_val = mol_row.get("TPSA", "N/A")
 
         # Header
         mw_str = f"{mw_val:.1f}" if isinstance(mw_val, (int, float)) and mw_val != "N/A" else str(mw_val)
         qed_str = f"{qed_val:.3f}" if isinstance(qed_val, (int, float)) and qed_val != "N/A" else str(qed_val)
+        tpsa_str = f"{tpsa_val:.1f}" if isinstance(tpsa_val, (int, float)) and tpsa_val != "N/A" else str(tpsa_val)
 
         card_html = f"""
 <div style="border:1px solid #bdc3c7;border-radius:8px;padding:15px;margin:15px 0;background:white;">
     <h4 style="margin:0 0 10px 0;color:#1a5276">{mol_name}</h4>
     <p style="font-size:12px;margin:5px 0">
-        <b>Grid_Score:</b> {gs:.2f} &nbsp;|&nbsp;
-        <b>Weighted Consistency:</b> {wc:.3f} &nbsp;|&nbsp;
-        <b>Composite:</b> {comp:.2f} &nbsp;|&nbsp;
-        <b>n_poses:</b> {int(n_p)} &nbsp;|&nbsp;
+        <b>Mean Grid_Score (composite):</b> {comp:.2f} &nbsp;|&nbsp;
+        <b>Best Grid_Score:</b> {best_gs:.2f} &nbsp;|&nbsp;
+        <b>n_modes:</b> {int(n_m)} &nbsp;|&nbsp;
+        <b>Spread:</b> {spread_val:.1f} &nbsp;|&nbsp;
+        <b>Ratio:</b> {ratio_val:.3f} &nbsp;|&nbsp;
         <b>MW:</b> {mw_str} &nbsp;|&nbsp;
-        <b>QED:</b> {qed_str}
+        <b>QED:</b> {qed_str} &nbsp;|&nbsp;
+        <b>TPSA:</b> {tpsa_str}
     </p>
 """
         # Per-residue table from residue_per_pose
@@ -582,6 +602,26 @@ def _generate_html(
     <tbody>{res_table_rows}</tbody>
     </table>
 """
+        # Per-mode Grid_Score table
+        if df_all_poses is not None and not df_all_poses.empty:
+            mol_poses = df_all_poses[df_all_poses["Name"] == mol_name].copy() if "Name" in df_all_poses.columns else pd.DataFrame()
+            if not mol_poses.empty:
+                pose_score_col = "Grid_Score" if "Grid_Score" in mol_poses.columns else mol_poses.columns[1]
+                mol_poses = mol_poses.sort_values(pose_score_col, ascending=True)
+                mode_rows = ""
+                for pi, (_, prow) in enumerate(mol_poses.iterrows()):
+                    p_gs = prow.get(pose_score_col, 0)
+                    p_vdw = prow.get("Grid_vdw_energy", 0)
+                    p_es = prow.get("Grid_es_energy", 0)
+                    mode_rows += f"<tr><td>{pi+1}</td><td>{p_gs:.2f}</td><td>{p_vdw:.2f}</td><td>{p_es:.2f}</td></tr>\n"
+                card_html += f"""
+    <p style="font-size:11px;margin:10px 0 3px 0;color:#555"><b>All binding modes:</b></p>
+    <table class="data-table" style="font-size:11px">
+    <thead><tr><th>Mode</th><th>Grid_Score</th><th>vdW</th><th>ES</th></tr></thead>
+    <tbody>{mode_rows}</tbody>
+    </table>
+"""
+
         card_html += "</div>\n"
         detail_cards_html += card_html
 
@@ -686,13 +726,13 @@ def _generate_html(
 {f'<div class="figure"><img src="data:image/png;base64,{figures["vdw_es"]}"><div class="figure-caption">Fig 2. Energy decomposition: vdW vs electrostatic per molecule. Color = Grid_Score.</div></div>' if figures.get("vdw_es") else ''}
 
 <!-- ============================================================ -->
-<h2>2. Top 20 by Composite (Grid_Score x weighted_consistency)</h2>
+<h2>2. Top 20 by Mean Grid_Score (composite)</h2>
 
 <div class="summary-box">
-    <b>Composite formula:</b> Grid_Score &times; weighted_consistency<br>
-    <b>Best composite:</b> {best_name} ({best_composite:.2f})<br>
-    <b>Interpretation:</b> More negative = better. Consistency weights the raw score by how
-    reproducibly a molecule contacts key residues across poses.
+    <b>Composite:</b> mean Grid_Score across all binding modes<br>
+    <b>Best composite:</b> {best_name} ({best_composite:.2f} kcal/mol)<br>
+    <b>Interpretation:</b> More negative = better. The mean penalizes molecules
+    that only bind well in one outlier pose and rewards consistent binders.
 </div>
 
 {table2_html}
@@ -740,7 +780,7 @@ def _generate_html(
 {f'<div class="figure"><img src="data:image/png;base64,{figures["contacts"]}"><div class="figure-caption">Fig 6. Contact heatmap: top residues x top molecules. Color = min distance (Angstrom). Green = close contact.</div></div>' if figures.get("contacts") else ''}
 
 <div class="footer">
-    <p>Generated by molecular_docking — Module 04e (DOCK6 analysis) v3.0</p>
+    <p>Generated by molecular_docking — Module 04e (DOCK6 analysis) v4.0</p>
     <p>Reference: Balius et al. J Chem Inf Model 2011, 51(8):1942-56</p>
 </div>
 
@@ -760,12 +800,13 @@ def run_campaign_report(
         campaign_id: str = "",
         gnina_scores_csv: Optional[str] = None,
         molecules_csv: Optional[str] = None,
+        all_poses_csv: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Generate DOCK6 campaign HTML report with figures.
 
     Reads outputs from 04a-04d and produces composite ranking + HTML report.
-    Uses multiplicative composite: Grid_Score × weighted_consistency.
+    Composite = mean Grid_Score across all binding modes.
     """
     results_base = Path(results_base)
     output_dir = Path(output_dir)
@@ -774,7 +815,7 @@ def run_campaign_report(
     fig_path.mkdir(parents=True, exist_ok=True)
 
     logger.info("=" * 60)
-    logger.info("  04e DOCK6 Campaign Report v3.0")
+    logger.info("  04e DOCK6 Campaign Report v4.0")
     logger.info("=" * 60)
 
     # --- Locate input files ---
@@ -788,6 +829,15 @@ def run_campaign_report(
     modes_csv = results_base / "04c_binding_modes" / "binding_modes_summary.csv"
     contacts_csv = results_base / "04d_contact_mapping" / "contact_summary.csv"
 
+    # Auto-detect all_poses_csv from 01e
+    if not all_poses_csv:
+        # Look in parent of results_base (04_dock6_analysis) → go to 01e
+        campaign_results = results_base.parent
+        auto_poses = campaign_results / "01e_score_collection" / "dock6_all_poses.csv"
+        if auto_poses.exists():
+            all_poses_csv = str(auto_poses)
+            logger.info(f"  Auto-detected all_poses_csv: {all_poses_csv}")
+
     # Use score_components if available, else molecule_ranking
     main_csv = str(score_csv) if score_csv.exists() else str(ranking_csv) if ranking_csv.exists() else None
 
@@ -796,11 +846,10 @@ def run_campaign_report(
                 "error": f"No score data found in {results_base / '04a_score_ranking'}"}
 
     # --- Build composite ranking ---
-    logger.info("  Building composite ranking...")
+    logger.info("  Building composite ranking (mean Grid_Score across modes)...")
     df_ranking = _build_composite_ranking(
         main_csv,
-        consistency_csv=str(consistency_csv) if consistency_csv.exists() else None,
-        modes_csv=str(modes_csv) if modes_csv.exists() else None,
+        all_poses_csv=all_poses_csv,
     )
 
     composite_out = output_dir / "composite_ranking.csv"
@@ -832,6 +881,7 @@ def run_campaign_report(
     df_contacts = pd.read_csv(contacts_csv) if contacts_csv.exists() else None
     df_fps_summary = pd.read_csv(fps_summary_csv) if fps_summary_csv.exists() else None
     df_residue_per_pose = pd.read_csv(residue_per_pose_csv) if residue_per_pose_csv.exists() else None
+    df_all_poses = pd.read_csv(all_poses_csv) if all_poses_csv and Path(all_poses_csv).exists() else None
 
     # --- Generate figures ---
     logger.info("  Generating figures...")
@@ -869,6 +919,7 @@ def run_campaign_report(
         n_molecules=len(df_ranking),
         df_drug=df_drug,
         df_residue_per_pose=df_residue_per_pose,
+        df_all_poses=df_all_poses,
     )
 
     report_html = output_dir / "campaign_report.html"

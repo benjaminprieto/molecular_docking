@@ -1,7 +1,7 @@
 # =============================================================================
 # 04e Campaign Report - Configuration (DOCK6 analysis v3.0)
 # =============================================================================
-# HTML report with multiplicative composite: Grid_Score × weighted_consistency.
+# HTML report with composite = mean Grid_Score across all binding modes.
 #
 # INPUT:  05_results/{campaign_id}/04_dock6_analysis/04a-04d outputs
 # OUTPUT: 05_results/{campaign_id}/04_dock6_analysis/04e_campaign_report/
@@ -11,12 +11,12 @@
 #
 # Project: molecular_docking
 # Module: 04e (DOCK6 analysis)
-# Version: 3.0 (2026-03-27)
+# Version: 4.0 (2026-03-27)
 # =============================================================================
 
 parameters:
-  # Multiplicative composite (Grid_Score × weighted_consistency)
-  composite_method: "multiplicative"
+  # Composite = mean Grid_Score across all binding modes
+  composite_method: "mean_grid_score"
 
   # Number of top molecules shown in each table
   top_n: 20
