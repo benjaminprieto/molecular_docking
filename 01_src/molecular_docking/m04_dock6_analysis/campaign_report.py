@@ -573,7 +573,7 @@ def _generate_html(
                         es_val = rrow.get("es", rrow.get("mean_es", 0))
                         cons_val = rrow.get("consistency", rrow.get("frac_consistent", 0))
                         n_fav = rrow.get("n_favorable", "")
-                        n_pos = rrow.get("n_poses", n_p)
+                        n_pos = rrow.get("n_poses", n_m)
 
                         # Assessment
                         if e_val < -5 and cons_val > 0.8:
