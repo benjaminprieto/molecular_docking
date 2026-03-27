@@ -96,6 +96,9 @@ def main():
         params = mc.get("parameters", {})
         pharmacophore_threshold = params.get("pharmacophore_threshold", pharmacophore_threshold)
         energy_cutoff = params.get("energy_cutoff", energy_cutoff)
+        best_pose_only = params.get("best_pose_only", False)
+        consistency_threshold = params.get("consistency_threshold", 0.5)
+        favorable_threshold = params.get("favorable_threshold", 0.0)
         log_level = params.get("log_level", log_level)
 
     # --- CLI overrides ---
@@ -131,6 +134,9 @@ def main():
         receptor_pdb=receptor_pdb,
         pharmacophore_threshold=pharmacophore_threshold,
         energy_cutoff=energy_cutoff,
+        best_pose_only=best_pose_only,
+        consistency_threshold=consistency_threshold,
+        favorable_threshold=favorable_threshold,
     )
 
     if not result.get("success"):

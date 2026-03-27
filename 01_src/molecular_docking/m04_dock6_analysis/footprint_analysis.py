@@ -36,7 +36,7 @@ Output:
 Location: 01_src/molecular_docking/m04_dock6_analysis/footprint_analysis.py
 Project: molecular_docking
 Module: 04b (DOCK6 analysis)
-Version: 3.0 (2026-03-23) — adds sequential→PDB residue remapping
+Version: 4.0 (2026-03-27) — adds per-pose residue consistency for multiplicative composite
 
 Reference: Balius et al. J Chem Inf Model 2011, 51(8):1942-56
 """
@@ -633,7 +633,9 @@ def run_footprint_analysis(
         receptor_pdb: Optional[str] = None,
         pharmacophore_threshold: float = 0.8,
         energy_cutoff: float = -0.5,
-        best_pose_only: bool = True,
+        best_pose_only: bool = False,
+        consistency_threshold: float = 0.5,
+        favorable_threshold: float = 0.0,
         plip_json: Optional[str] = None,
         contact_csv: Optional[str] = None,
         campaign_id: str = "",
@@ -658,7 +660,7 @@ def run_footprint_analysis(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("=" * 60)
-    logger.info("  04b DOCK6 Footprint Analysis v3.0")
+    logger.info("  04b DOCK6 Footprint Analysis v4.0")
     logger.info("=" * 60)
 
     # --- Build residue mapping ---
@@ -783,7 +785,92 @@ def run_footprint_analysis(
     df_all.to_csv(fps_csv, index=False, encoding="utf-8")
     logger.info(f"  Saved: {fps_csv} ({len(df_all)} rows)")
 
+    # --- Per-pose residue consistency ---
+    if not best_pose_only:
+        logger.info("  Computing per-pose residue consistency...")
+
+        residue_consistency_rows = []
+        molecule_consistency_rows = []
+
+        for mol_name, mol_grp in df_all.groupby("Name"):
+            pose_ids = mol_grp["pose_id"].unique()
+            n_poses = len(pose_ids)
+
+            if n_poses < 2:
+                continue
+
+            # Per residue stats across poses
+            mol_residue_stats = []
+            for res_id, res_grp in mol_grp.groupby("residue_id"):
+                energies = res_grp["total"].values
+                n_favorable = int(np.sum(energies < favorable_threshold))
+                consistency = n_favorable / n_poses
+
+                mol_residue_stats.append({
+                    "Name": mol_name,
+                    "residue_id": res_id,
+                    "residue_name": res_grp.iloc[0]["residue_name"],
+                    "chain": res_grp.iloc[0]["chain"],
+                    "n_poses": n_poses,
+                    "mean_total": round(float(np.mean(energies)), 4),
+                    "std_total": round(float(np.std(energies)), 4),
+                    "mean_vdw": round(float(res_grp["vdw"].mean()), 4),
+                    "mean_es": round(float(res_grp["es"].mean()), 4),
+                    "n_favorable": n_favorable,
+                    "consistency": round(consistency, 4),
+                    "min_energy": round(float(np.min(energies)), 4),
+                    "max_energy": round(float(np.max(energies)), 4),
+                })
+                residue_consistency_rows.append(mol_residue_stats[-1])
+
+            # Weighted consistency per molecule
+            # Only residues with |mean_total| > consistency_threshold
+            sig_residues = [r for r in mol_residue_stats
+                           if abs(r["mean_total"]) > consistency_threshold and r["mean_total"] < 0]
+
+            if sig_residues:
+                weights = [abs(r["mean_total"]) for r in sig_residues]
+                consistencies = [r["consistency"] for r in sig_residues]
+                total_weight = sum(weights)
+                weighted_consistency = sum(w * c for w, c in zip(weights, consistencies)) / total_weight if total_weight > 0 else 0.0
+                n_consistent = sum(1 for r in sig_residues if r["consistency"] > 0.5)
+            else:
+                weighted_consistency = 0.0
+                n_consistent = 0
+
+            molecule_consistency_rows.append({
+                "Name": mol_name,
+                "n_poses": n_poses,
+                "n_residues_tracked": len(mol_residue_stats),
+                "n_significant_residues": len(sig_residues),
+                "n_consistent_residues": n_consistent,
+                "weighted_consistency": round(weighted_consistency, 4),
+            })
+
+        # Save residue_per_pose.csv
+        if residue_consistency_rows:
+            df_res_consistency = pd.DataFrame(residue_consistency_rows)
+            res_cons_csv = output_dir / "residue_per_pose.csv"
+            df_res_consistency.to_csv(res_cons_csv, index=False)
+            logger.info(f"  Saved: {res_cons_csv} ({len(df_res_consistency)} rows)")
+
+        # Save molecule_consistency_summary.csv
+        if molecule_consistency_rows:
+            df_mol_consistency = pd.DataFrame(molecule_consistency_rows)
+            mol_cons_csv = output_dir / "molecule_consistency_summary.csv"
+            df_mol_consistency.to_csv(mol_cons_csv, index=False)
+            logger.info(f"  Saved: {mol_cons_csv} ({len(df_mol_consistency)} rows)")
+
+            # Log summary
+            wc_vals = df_mol_consistency["weighted_consistency"]
+            logger.info(f"  Weighted consistency: mean={wc_vals.mean():.3f}, "
+                        f"min={wc_vals.min():.3f}, max={wc_vals.max():.3f}")
+
     # --- Residue consensus ---
+    # Note: when best_pose_only=False, df_all contains multiple rows per molecule
+    # per residue (one per pose). The consensus mean_total is therefore the mean
+    # across ALL poses of ALL molecules, which is more representative than just
+    # best poses.
     residue_stats = []
     all_names = df_all["Name"].nunique()
 
@@ -919,5 +1006,7 @@ def run_footprint_analysis(
         "vs_reference_csv": str(ref_csv) if ref_csv else None,
         "molecule_summary_csv": str(summary_csv),
         "zones_html": str(zones_html_path) if zones_html_path else None,
+        "residue_per_pose_csv": str(output_dir / "residue_per_pose.csv") if not best_pose_only else None,
+        "molecule_consistency_csv": str(output_dir / "molecule_consistency_summary.csv") if not best_pose_only else None,
         "output_dir": str(output_dir),
     }

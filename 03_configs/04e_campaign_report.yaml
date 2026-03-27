@@ -1,23 +1,28 @@
 # =============================================================================
-# 04e Campaign Report - Configuration (DOCK6 analysis)
+# 04e Campaign Report - Configuration (DOCK6 analysis v3.0)
 # =============================================================================
-# HTML report with composite ranking from 04a-04d.
+# HTML report with multiplicative composite: Grid_Score × weighted_consistency.
 #
 # INPUT:  05_results/{campaign_id}/04_dock6_analysis/04a-04d outputs
 # OUTPUT: 05_results/{campaign_id}/04_dock6_analysis/04e_campaign_report/
 #
+# Composite: Grid_Score × weighted_consistency (from 04b per-pose analysis)
+# gnina_scores.csv optional — used only for drug-likeness columns.
+#
 # Project: molecular_docking
 # Module: 04e (DOCK6 analysis)
-# Version: 1.1 (2026-03-23) — path fix: 05_dock6 → 04_dock6_analysis
+# Version: 3.0 (2026-03-27)
 # =============================================================================
 
 parameters:
-  # Composite ranking weights (must sum to 1.0)
-  composite_weights:
-    grid_score: 0.40    # Binding energy (Grid_Score)
-    fps_score:  0.30    # Footprint similarity to reference
-    n_modes:    0.15    # Binding mode diversity
-    score_std:  0.15    # Score reproducibility across modes
+  # Multiplicative composite (Grid_Score × weighted_consistency)
+  composite_method: "multiplicative"
+
+  # Number of top molecules shown in each table
+  top_n: 20
+
+  # Drug-likeness source (null = auto-detect)
+  gnina_scores_csv: null
 
   log_level: "INFO"
 
@@ -29,5 +34,5 @@ outputs:
 # =============================================================================
 # python 02_scripts/04e_campaign_report.py \
 #     --config 03_configs/04e_campaign_report.yaml \
-#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
+#     --campaign 04_data/campaigns/UDX_namiki_pH63/campaign_config.yaml
 # =============================================================================

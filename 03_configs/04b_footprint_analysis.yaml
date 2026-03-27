@@ -1,21 +1,19 @@
 # =============================================================================
-# 04b Footprint Analysis - Configuration (DOCK6 analysis)
+# 04b Footprint Analysis - Configuration (DOCK6 analysis v4.0)
 # =============================================================================
-# Phase 1: Re-score existing poses with footprint_similarity_score_primary
-#           (fast, seconds per molecule, no re-docking)
-# Phase 2: Parse per-residue vdW + ES, consensus, vs-reference comparison
+# Per-residue vdW + ES energy decomposition via DOCK6 footprint scoring.
+# Now includes per-pose residue consistency for multiplicative composite.
 #
-# INPUT:  05_results/{campaign_id}/01c_dock6_run/{name}/{name}_scored.mol2
+# INPUT:  05_results/{campaign_id}/01d_footprint_rescore/{name}/
 #         05_results/{campaign_id}/00b_receptor_preparation/rec_charged.mol2
-#         05_results/{campaign_id}/01e_score_collection/best_poses/ (reference)
-# OUTPUT: 05_results/{campaign_id}/04_dock6_analysis/04b_footprint_rescore/
-#         05_results/{campaign_id}/04_dock6_analysis/04b_footprint_analysis/
+#         05_results/{campaign_id}/00b_receptor_preparation/rec_noH.pdb
+# OUTPUT: 05_results/{campaign_id}/04_dock6_analysis/04b_footprint_analysis/
 #
 # REFERENCE: Balius et al. J Chem Inf Model 2011, 51(8):1942-56
 #
 # Project: molecular_docking
 # Module: 04b (DOCK6 analysis)
-# Version: 1.1 (2026-03-23) — path fix: 05_dock6 → 04_dock6_analysis
+# Version: 4.0 (2026-03-27)
 # =============================================================================
 
 parameters:
@@ -27,8 +25,17 @@ parameters:
   # (kcal/mol, must be more negative than this)
   energy_cutoff: -0.5
 
+  # Per-pose consistency analysis (new in v4.0)
+  # Analyze ALL poses per molecule (not just best)
+  best_pose_only: false
+
+  # Min |mean_energy| to include residue in weighted_consistency calc
+  consistency_threshold: 0.5
+
+  # Energy below this is "favorable" (0.0 = any negative)
+  favorable_threshold: 0.0
+
   # Timeout per molecule for DOCK6 re-scoring (seconds)
-  # Re-scoring is fast: typically 2-10 seconds per molecule
   timeout: 120
 
   # Override reference mol2 (null = auto-detect from 01d best_poses)
@@ -43,18 +50,7 @@ outputs:
 # =============================================================================
 # USAGE
 # =============================================================================
-# # Full pipeline (rescore + analyze):
 # python 02_scripts/04b_footprint_analysis.py \
 #     --config 03_configs/04b_footprint_analysis.yaml \
-#     --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
-#
-# # Phase 1 only (generate re-scoring inputs, test with --dry-run):
-# python 02_scripts/04b_footprint_analysis.py \
-#     --config 03_configs/04b_footprint_analysis.yaml \
-#     --campaign ... --rescore-only --dry-run
-#
-# # Phase 2 only (if re-scoring already done):
-# python 02_scripts/04b_footprint_analysis.py \
-#     --config 03_configs/04b_footprint_analysis.yaml \
-#     --campaign ... --analyze-only
+#     --campaign 04_data/campaigns/UDX_namiki_pH63/campaign_config.yaml
 # =============================================================================

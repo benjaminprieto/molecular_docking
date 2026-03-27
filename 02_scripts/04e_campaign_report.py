@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-05g Campaign Report - CLI
-===========================
-Generates consolidated HTML report with figures, tables, and text summary.
+04e DOCK6 Campaign Report - CLI
+===================================
+Generates consolidated HTML report for DOCK6 analysis with composite ranking.
 
 Usage:
-    python 02_scripts/05g_campaign_report.py -c 03_configs/05g_campaign_report.yaml \
-        --campaign 04_data/campaigns/UDX_pharmit_pH63/campaign_config.yaml
+    python 02_scripts/04e_campaign_report.py -c 03_configs/04e_campaign_report.yaml \
+        --campaign 04_data/campaigns/UDX_namiki_pH63/campaign_config.yaml
 
 Project: molecular_docking
-Module: 05g
-Version: 2.0 — uses actual Vina affinity from 02c (torsion-corrected)
+Module: 04e (DOCK6 analysis)
+Version: 3.0 — multiplicative composite (Grid_Score × weighted_consistency)
 """
 
 import argparse
@@ -22,7 +22,7 @@ from pathlib import Path
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)-8s | %(message)s')
 sys.path.insert(0, str(Path(__file__).parent.parent / '01_src'))
 
-from molecular_docking.m05_gnina_analysis.campaign_report import run_campaign_report
+from molecular_docking.m04_dock6_analysis.campaign_report import run_campaign_report
 
 logger = logging.getLogger(__name__)
 
@@ -32,24 +32,26 @@ def load_yaml(path):
         return yaml.safe_load(f)
 
 
+def setup_log_file(log_path: Path, log_level: str = "INFO"):
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    fh = logging.FileHandler(str(log_path), encoding="utf-8")
+    fh.setLevel(getattr(logging, log_level.upper(), logging.INFO))
+    fh.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-8s | %(message)s"))
+    logging.getLogger().addHandler(fh)
+
+
 def main():
-    parser = argparse.ArgumentParser(description='05g Campaign Report')
+    parser = argparse.ArgumentParser(description='04e DOCK6 Campaign Report')
     parser.add_argument('--config', '-c', type=str, help='Module YAML config')
     parser.add_argument('--campaign', type=str, required=True, help='Campaign config YAML')
     parser.add_argument('--output', '-o', type=str, default=None)
-    parser.add_argument('--reference', type=str, default=None,
-                        help='Reference mol2 for RMSD validation (e.g. crystallographic ligand)')
-    parser.add_argument('--control-name', type=str, default='UDX',
-                        help='Name of control molecule to compute RMSD against reference')
-    parser.add_argument('--gnina-scores', type=str, default=None,
-                        help='Path to gnina_scores.csv from 02c (auto-detected if omitted)')
-    parser.add_argument('--name', type=str, default=None, help='Filter single molecule')
+    parser.add_argument('--log-level', type=str, default=None,
+                        choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     args = parser.parse_args()
 
     cc = load_yaml(args.campaign)
-    campaign_id = cc.get('campaign_id', Path(args.campaign).parent.name)
-
-    engine = 'gnina'
+    campaign_dir = Path(args.campaign).parent
+    campaign_id = cc.get('campaign_id', campaign_dir.name)
 
     # Module config
     params = {}
@@ -57,50 +59,42 @@ def main():
         mc = load_yaml(args.config)
         params = mc.get('parameters', {})
 
-    results_base = Path('05_results') / campaign_id / 'm05_gnina_analysis'
-    output_dir = args.output or str(results_base / '05g_campaign_report')
+    # Results directory
+    results_base = Path('05_results') / campaign_id / '04_dock6_analysis'
+    output_subdir = params.get('output_subdir', '04e_campaign_report')
+    output_dir = args.output or str(results_base / output_subdir)
 
-    # Reference mol2 for RMSD validation
-    reference_mol2 = args.reference
-    if not reference_mol2:
-        # Auto-detect from campaign
-        campaign_dir = Path(args.campaign).parent
-        auto_ref = campaign_dir / 'reference' / 'UDX.mol2'
-        if auto_ref.exists():
-            reference_mol2 = str(auto_ref)
+    log_level = args.log_level or params.get("log_level", "INFO")
+    out_p = Path(output_dir)
+    out_p.mkdir(parents=True, exist_ok=True)
+    setup_log_file(out_p / "04e_campaign_report.log", log_level)
 
-    # GNINA scores CSV from 02c (auto-detect)
-    gnina_scores_csv = args.gnina_scores
+    # Drug-likeness source (try gnina_scores.csv, then unique_molecules.csv)
+    gnina_scores_csv = params.get("gnina_scores_csv")
     if not gnina_scores_csv:
         auto_gnina = Path('05_results') / campaign_id / '02c_gnina_scores' / 'gnina_scores.csv'
         if auto_gnina.exists():
             gnina_scores_csv = str(auto_gnina)
-            logger.info(f"  Auto-detected gnina_scores.csv: {gnina_scores_csv}")
-        else:
-            logger.warning(f"  gnina_scores.csv not found at {auto_gnina}")
-            logger.warning("  Composite ranking will use fragment atom_terms sum (BIASED)")
+
+    molecules_csv = None
+    auto_mol = Path('05_results') / campaign_id / '00a_molecule_parser' / 'unique_molecules.csv'
+    if auto_mol.exists():
+        molecules_csv = str(auto_mol)
 
     logger.info("=" * 60)
-    logger.info(f"M05g: CAMPAIGN REPORT v2.0")
+    logger.info("M04e: DOCK6 CAMPAIGN REPORT v3.0")
     logger.info("=" * 60)
-    logger.info(f"Campaign:     {campaign_id}")
-    logger.info(f"Engine:       {engine}")
-    logger.info(f"Reference:    {reference_mol2 or 'none'}")
-    logger.info(f"GNINA scores: {gnina_scores_csv or 'none (fallback to atom_terms)'}")
-    logger.info(f"Output:       {output_dir}")
+    logger.info(f"Campaign:       {campaign_id}")
+    logger.info(f"Results base:   {results_base}")
+    logger.info(f"Output:         {output_dir}")
+    logger.info(f"Drug-likeness:  {gnina_scores_csv or molecules_csv or 'none'}")
 
     result = run_campaign_report(
-        parsed_dir=str(results_base / '05a_parse_and_fragment'),
-        cluster_dir=str(results_base / '05b_fragment_clustering'),
-        score_dir=str(results_base / '05c_score_decomposition'),
-        hotspot_dir=str(results_base / '05d_binding_site_hotspots'),
-        contact_dir=str(results_base / '05f_contact_mapping'),
+        results_base=str(results_base),
         output_dir=output_dir,
         campaign_id=campaign_id,
-        engine=engine,
-        reference_mol2=reference_mol2,
-        control_name=args.control_name,
         gnina_scores_csv=gnina_scores_csv,
+        molecules_csv=molecules_csv,
     )
 
     if not result.get('success'):
