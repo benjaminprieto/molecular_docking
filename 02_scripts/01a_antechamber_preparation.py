@@ -229,7 +229,7 @@ def main():
                 f"--config 03_configs/01b_grid_generation.yaml "
                 f"--campaign {args.campaign or '<campaign_config.yaml>'}")
 
-    return 0 if result["n_failed"] == 0 else 1
+    return 0 if result["n_ok"] > 0 else 1
 
 
 if __name__ == "__main__":

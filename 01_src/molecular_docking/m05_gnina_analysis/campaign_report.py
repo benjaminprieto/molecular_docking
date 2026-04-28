@@ -691,9 +691,9 @@ def _build_consensus_table(df_energy, df_cluster, df_contacts):
     frag_top_contact = {}
     if not df_contacts.empty and 'fragment_id' in df_contacts.columns:
         for (name, frag_id), grp in df_contacts.groupby(['Name', 'fragment_id']):
-            top1 = grp.nsmallest(1, 'min_distance')['residue_id'].values
-            if len(top1) > 0:
-                frag_top_contact[(name, frag_id)] = top1[0]
+            top3 = grp.nsmallest(3, 'min_distance')['residue_id'].values
+            if len(top3) > 0:
+                frag_top_contact[(name, frag_id)] = ", ".join(top3)
 
     # Best individual fragments by fragment_composite (most negative first)
     best_individual = merged.nsmallest(20, 'fragment_composite')
@@ -711,7 +711,7 @@ More negative fragment composite = better.</p>
         <th>Conv</th>
         <th>Frag Composite</th>
         <th>is_ring</th>
-        <th>Top Contact Residue</th>
+        <th>Top Contacts</th>
     </tr>"""
 
     for rank, (_, r) in enumerate(best_individual.iterrows(), 1):
@@ -731,40 +731,6 @@ More negative fragment composite = better.</p>
         <td><b>{r['fragment_composite']:.3f}</b></td>
         <td>{is_ring}</td>
         <td>{top_contact}</td>
-    </tr>"""
-
-    html += "</table>"
-
-    # Fragment type summary (kept as informational)
-    by_type = merged.groupby('fragment_label').agg(
-        n_molecules=('Name', 'nunique'),
-        mean_prop_vina=(prop_vina_col, 'mean'),
-        mean_combined=('fragment_composite', 'mean'),
-        mean_conv=('dominant_fraction', 'mean'),
-        pct_stable=('dominant_fraction', lambda x: (x > 0.7).mean()),
-    ).sort_values('mean_combined')
-
-    html += """<h3>Fragment Type Consensus (across all molecules)</h3>
-<p style="font-size:12px;color:#777">Which fragment types consistently perform well across the library?</p>
-<table class="data-table">
-    <tr>
-        <th>Fragment Type</th>
-        <th>Molecules</th>
-        <th>Mean Prop. Vina</th>
-        <th>Mean Frag Composite</th>
-        <th>Mean Conv</th>
-        <th>% Stable</th>
-    </tr>"""
-
-    for label, row in by_type.iterrows():
-        html += f"""
-    <tr>
-        <td><b>{label}</b></td>
-        <td>{int(row['n_molecules'])}</td>
-        <td>{row['mean_prop_vina']:.3f}</td>
-        <td><b>{row['mean_combined']:.3f}</b></td>
-        <td>{_stability_badge(row['mean_conv'])}</td>
-        <td>{row['pct_stable']:.0%}</td>
     </tr>"""
 
     html += "</table>"

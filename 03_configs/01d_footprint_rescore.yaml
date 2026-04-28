@@ -50,6 +50,13 @@ parameters:
   # GB radius offset (default from DOCK6 manual)
   gb_offset: 0.09
 
+  # DOCK6 score_threshold — poses with primary score above this are discarded.
+  # For footprint rescoring the primary score is Footprint_Similarity_Score
+  # (Euclidean distance, positive, typically 100-300 for large receptors).
+  # DOCK6 defaults to 100.0 which silently discards all poses.
+  # Set high to effectively disable filtering (we want all poses rescored).
+  score_threshold: 9999.0
+
   log_level: "INFO"
 
 outputs:

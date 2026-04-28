@@ -96,23 +96,12 @@ def main():
         return 1
     receptor_mol2 = str(rec_mol2_path.resolve())
 
-    # Reference mol2 — check multiple locations
+    # Reference mol2 (from grids.binding_site in campaign config)
     reference_mol2 = None
-    # 1. Top-level reference_mol2 key
-    ref_key = cc.get("reference_mol2")
-    # 2. Nested under grids.binding_site.reference_mol2
-    if not ref_key:
-        ref_key = cc.get("grids", {}).get("binding_site", {}).get("reference_mol2")
-    # 3. Default fallback
-    if not ref_key:
-        ref_key = "reference/UDX.mol2"
-
-    ref_mol2_path = campaign_dir / ref_key
-    if ref_mol2_path.exists():
-        reference_mol2 = str(ref_mol2_path.resolve())
-    else:
-        # Try bare reference/ directory
-        ref_mol2_path = campaign_dir / "reference" / "UDX.mol2"
+    bs = cc.get("grids", {}).get("binding_site", {})
+    ref_rel = bs.get("reference_mol2")
+    if ref_rel:
+        ref_mol2_path = campaign_dir / ref_rel
         if ref_mol2_path.exists():
             reference_mol2 = str(ref_mol2_path.resolve())
 
@@ -131,6 +120,7 @@ def main():
     solvent_dielectric = params.get("solvent_dielectric", 78.5)
     salt_concentration = params.get("salt_concentration", 0.15)
     gb_offset = params.get("gb_offset", 0.09)
+    score_threshold = params.get("score_threshold", 9999.0)
 
     # --- Logging ---
     logging.getLogger().setLevel(getattr(logging, log_level.upper(), logging.INFO))
@@ -160,6 +150,7 @@ def main():
         solvent_dielectric=solvent_dielectric,
         salt_concentration=salt_concentration,
         gb_offset=gb_offset,
+        score_threshold=score_threshold,
     )
 
     if not result.get("success"):
@@ -170,7 +161,7 @@ def main():
                 f"--config 03_configs/01e_score_collection.yaml "
                 f"--campaign {args.campaign}")
 
-    return 0 if result["n_failed"] == 0 else 1
+    return 0 if result["n_ok"] > 0 else 1
 
 
 if __name__ == "__main__":

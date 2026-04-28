@@ -160,12 +160,10 @@ def main():
 
     # Reference mol2 (for footprint comparison — crystallographic ligand)
     reference_mol2 = None
-    ref_mol2_path = campaign_dir / cc.get("reference_mol2", "reference/UDX.mol2")
-    if ref_mol2_path.exists():
-        reference_mol2 = str(ref_mol2_path.resolve())
-    else:
-        # Try default location
-        ref_mol2_path = campaign_dir / "reference" / "UDX.mol2"
+    bs = cc.get("grids", {}).get("binding_site", {})
+    ref_rel = bs.get("reference_mol2")
+    if ref_rel:
+        ref_mol2_path = campaign_dir / ref_rel
         if ref_mol2_path.exists():
             reference_mol2 = str(ref_mol2_path.resolve())
 
@@ -267,7 +265,7 @@ def main():
                 f"--config 03_configs/01d_score_collection.yaml "
                 f"--campaign {args.campaign}")
 
-    return 0 if result["n_failed"] == 0 else 1
+    return 0 if result["n_ok"] > 0 else 1
 
 
 if __name__ == "__main__":

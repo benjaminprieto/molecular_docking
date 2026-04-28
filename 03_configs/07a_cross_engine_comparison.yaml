@@ -1,0 +1,41 @@
+# =============================================================================
+# 07a Cross-Engine Comparison - Configuration
+# =============================================================================
+# Compare GNINA and DOCK6 results to identify consensus hits validated
+# by both scoring functions.
+#
+# INPUT:  05_results/{campaign_id}/02c_gnina_scores/gnina_scores.csv
+#         05_results/{campaign_id}/01e_score_collection/dock6_scores.csv
+#         05_results/{campaign_id}/05_gnina_analysis/05g_campaign_report/composite_ranking.csv
+#         05_results/{campaign_id}/04_dock6_analysis/04e_campaign_report/composite_ranking.csv
+#         05_results/{campaign_id}/01e_score_collection/dock6_all_poses.csv
+# OUTPUT: 05_results/{campaign_id}/07_cross_engine/
+#
+# Project: molecular_docking
+# Module: 07a
+# Version: 1.0 (2026-03-27)
+# =============================================================================
+
+parameters:
+  # Top N molecules from each ranking list for consensus analysis
+  top_n: 20
+
+  # Input paths (null = auto-detect from campaign results)
+  gnina_scores_csv: null
+  dock6_scores_csv: null
+  gnina_composite_csv: null
+  dock6_all_poses_csv: null
+  dock6_composite_csv: null
+
+  log_level: "INFO"
+
+outputs:
+  subdir: "07_cross_engine"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/07a_cross_engine_comparison.py \
+#     --config 03_configs/07a_cross_engine_comparison.yaml \
+#     --campaign 04_data/campaigns/UDX_namiki_pH63/campaign_config.yaml
+# =============================================================================

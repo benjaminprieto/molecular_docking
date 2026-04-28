@@ -20,8 +20,25 @@
 #   bash run_pipeline.sh XT1_hits both 01c 01e       # both engines, range
 #   bash run_pipeline.sh XT1_hits dock6 01c 01e      # DOCK6, range
 #
-# For nohup:
-#   nohup bash run_pipeline.sh XT1_hits both > logs/screen.log 2>&1 &
+# For nohup (background server runs):
+#   # Full pipeline, both engines
+#   nohup bash run_pipeline.sh XT1_hits both > logs/xt1_both.log 2>&1 &
+#   nohup bash run_pipeline.sh SD1_pharmit_pH63_SD1_1 both > logs/SD1_pharmit_pH63_SD1_full.log 2>&1 &
+#
+#   # Single engine, full run
+#   nohup bash run_pipeline.sh XT1_hits dock6 > logs/xt1_dock6.log 2>&1 &
+#   nohup bash run_pipeline.sh XT1_hits gnina > logs/xt1_gnina.log 2>&1 &
+#
+#   # Resume after interruption (e.g. 01a done, continue from 01b)
+#   nohup bash run_pipeline.sh XT1_hits dock6 01b 04e > logs/xt1_dock6_from01b.log 2>&1 &
+#
+#   # Analysis only (docking already finished)
+#   nohup bash run_pipeline.sh XT1_hits dock6 04a 04e > logs/xt1_dock6_analysis.log 2>&1 &
+#   nohup bash run_pipeline.sh XT1_hits gnina 05a 05g > logs/xt1_gnina_analysis.log 2>&1 &
+#
+#   # Monitor running jobs
+#   jobs -l                    # list background jobs
+#   tail -f logs/xt1_dock6.log # follow progress
 #
 # =============================================================================
 
@@ -30,17 +47,17 @@ set -e
 CAMPAIGN_ID="${1:-}"
 ENGINE="${2:-both}"
 START="${3:-00a}"
-STOP="${4:-05g}"
+STOP="${4:-07a}"
 
 if [ -z "$CAMPAIGN_ID" ]; then
     echo "Usage:"
     echo "  bash run_pipeline.sh <campaign_id> [engine] [start] [stop]"
     echo ""
     echo "  engine = dock6 | gnina | both (default: both)"
-    echo "  start/stop = module codes (default: 00a to 05g)"
+    echo "  start/stop = module codes (default: 00a to 07a)"
     echo ""
     echo "Pipeline sequence:"
-    echo "  00a → 00b → 00c → 00d → 01a-01e → 02a-02c → 04a-04e → 05a-05g"
+    echo "  00a → 00b → 00c → 00d → 01a-01e → 02a-02c → 04a-04e → 05a-05g → 07a"
     echo ""
     echo "Modules:"
     echo "  00a  Molecule Parser           00b  Receptor Preparation"
@@ -57,6 +74,7 @@ if [ -z "$CAMPAIGN_ID" ]; then
     echo "  05c  Score Decomposition       05d  Binding Site Hotspots"
     echo "  05e  Structure Export          05f  Contact Mapping"
     echo "  05g  Campaign Report"
+    echo "  07a  Cross-Engine Comparison   (engine=both only)"
     echo ""
     echo "Examples:"
     echo "  bash run_pipeline.sh XT1_hits                    # everything"
@@ -85,10 +103,11 @@ declare -A MODULE_ORDER=(
     [02a]=20 [02b]=21 [02c]=22
     [04a]=40 [04b]=41 [04c]=42 [04d]=43 [04e]=44
     [05a]=50 [05b]=51 [05c]=52 [05d]=53 [05e]=54 [05f]=55 [05g]=56
+    [07a]=70
 )
 
 START_NUM=${MODULE_ORDER[$START]:-1}
-STOP_NUM=${MODULE_ORDER[$STOP]:-56}
+STOP_NUM=${MODULE_ORDER[$STOP]:-70}
 
 should_run() {
     local module=$1
@@ -286,6 +305,20 @@ if should_run "05g"; then
     echo "[05g] Campaign Report — $(date '+%H:%M:%S')"
     python 02_scripts/05g_campaign_report.py -c 03_configs/05g_campaign_report.yaml --campaign "$CAMPAIGN"
     echo ""
+fi
+
+# =============================================================================
+# 07 — CROSS-ENGINE COMPARISON
+# =============================================================================
+
+if [ "$ENGINE" = "both" ]; then
+    if should_run "07a"; then
+        echo "[07a] Cross-Engine Comparison — $(date '+%H:%M:%S')"
+        python 02_scripts/07a_cross_engine_comparison.py \
+            -c 03_configs/07a_cross_engine_comparison.yaml \
+            --campaign "$CAMPAIGN"
+        echo ""
+    fi
 fi
 
 # =============================================================================

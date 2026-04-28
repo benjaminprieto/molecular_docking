@@ -102,6 +102,8 @@ write_footprints                                 yes
 write_hbonds                                     yes
 write_orientations                               no
 num_scored_conformers                            {num_scored_conformers}
+num_final_scored_poses                           {num_scored_conformers}
+score_threshold                                  {score_threshold}
 rank_ligands                                     no
 """
 
@@ -183,6 +185,7 @@ def run_footprint_rescore(
         solvent_dielectric: float = 78.5,
         salt_concentration: float = 0.15,
         gb_offset: float = 0.09,
+        score_threshold: float = 9999.0,
 ) -> Dict[str, Any]:
     """
     Re-score all DOCK6 poses with footprint decomposition.
@@ -199,6 +202,11 @@ def run_footprint_rescore(
         solvent_dielectric: Solvent dielectric constant (78.5 = water)
         salt_concentration: Salt concentration in M (0.15 = physiological)
         gb_offset:      GB radius offset (default 0.09)
+        score_threshold: DOCK6 score_threshold for pose filtering. For
+            footprint rescoring this must be high because FPS scores are
+            Euclidean distances (positive, typically 100-300 for large
+            receptors). DOCK6 default of 100.0 silently discards valid
+            poses. Use 9999.0 to effectively disable filtering.
 
     Returns:
         Dict with n_total, n_ok, n_failed, results
@@ -290,6 +298,7 @@ def run_footprint_rescore(
             output_prefix=f"{name}_fps",
             num_scored_conformers=max(n_poses, 1),
             gbsa_hawkins_block=gbsa_block,
+            score_threshold=score_threshold,
         )
 
         fps_in_path = mol_out / "dock6_fps.in"
@@ -322,6 +331,10 @@ def run_footprint_rescore(
                 logger.info(f"    -> OK ({runtime:.1f}s, {n_poses} poses)")
             else:
                 logger.warning(f"    -> FAILED ({runtime:.1f}s)")
+                if proc.stderr:
+                    logger.warning(f"       stderr: {proc.stderr[:300]}")
+                if proc.returncode != 0:
+                    logger.warning(f"       returncode: {proc.returncode}")
 
         except subprocess.TimeoutExpired:
             runtime = time.time() - t0

@@ -5,515 +5,144 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="88ab89a4-df8a-4554-a3f5-4d87aade3b19" name="Changes" comment="Resolve conflicts: keep local PC version">
-      <change afterPath="$PROJECT_DIR$/01_src/molecular_docking/m03_crystal_analysis/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/01_src/molecular_docking/m03_crystal_analysis/plip_interaction_analysis.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/01_src/molecular_docking/m06_pharmit/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/01_src/molecular_docking/m06_pharmit/pharmit_pharmacophore.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/02_scripts/03a_plip_interaction_analysis.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/02_scripts/06a_pharmit_pharmacophore.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/03_configs/03a_plip_interaction_analysis.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/03_configs/06a_pharmit_pharmacophore.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63/others/NBO-DEL-XT1-vs-XT2.xlsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63/others/Plip_UDX_Color.pse" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63/others/SD1_6EJE.pdb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63/others/SD1_6EJE_pH63.pdb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63/others/XT1_6EJE.pdb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63/others/XT1_6EJE_pH63.pdb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_reference_pH63/campaign_config.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_reference_pH63/grids/.gitkeep" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_reference_pH63/molecules/.gitkeep" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_reference_pH63/receptor/.gitkeep" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_reference_pH63/receptor/XT1_6EJ7.pdb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_reference_pH63/reference/SD1.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/campaign_config.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/grids/.gitkeep" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/.gitkeep" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00000257-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00015783-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00097874-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00097882-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00099256-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00107949-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00109839-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00109905-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00141388-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00145477-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00147674-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00155710-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00156649-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00172314-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00176608-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00179591-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00179738-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00188149-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00188155-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00188715-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00206618-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00206800-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00207045-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00207099-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00208646-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00235979-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00236567-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00252831-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00256367-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00277838-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00277847-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00277855-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00277859-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00277863-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00278351-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00278354-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00285909-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00300437-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00300505-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00300511-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00300528-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00300530-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00309945-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00346648-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00350404-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00366470-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00383337-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00384154-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00384858-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00384859-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00385047-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00385048-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00409985-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00419122-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00453231-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00475251-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00479442-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00480281-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00480767-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00481174-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00483312-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00489587-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00499127-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00507221-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00523553-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00526357-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00529021-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00529481-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00533573-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00533574-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00538363-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00540184-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00540225-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00561125-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00564397-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00566542-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00569566-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00574514-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00576758-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00576945-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00585550-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00590388-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00593851-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00595660-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00606779-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00617286-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00617291-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00617293-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00617361-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00617429-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00617537-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00617541-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00617671-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00618280-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00621983-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00622168-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00634940-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00634942-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00634943-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00642839-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00660233-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00688560-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00701232-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00701589-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00768749-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00769084-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00779282-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00803421-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00805279-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00816802-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00833846-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00848865-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00859616-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00862640-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00862656-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00872988-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00881936-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00907078-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00958232-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00964102-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-00987115-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01011638-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01037680-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01055239-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01057672-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01079784-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01130949-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01134657-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01152169-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01152315-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01152660-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01152662-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01161132-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01161277-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01161280-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01161290-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01161306-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01164308-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01164311-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01164312-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01164314-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01164316-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01164317-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01164318-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01188765-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01189020-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01189021-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01189738-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01225757-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01225926-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01225927-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01226709-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01226712-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01226888-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01227211-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01227480-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01227825-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01234909-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01235197-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01235413-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01236952-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01238621-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01238644-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01238876-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01238952-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01239291-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01239398-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01240407-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01240906-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01242159-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01243136-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01245478-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01246511-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01254344-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01262603-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01263438-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01263510-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01263766-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01263983-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01264043-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01264686-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01264767-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01264993-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01265753-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01266408-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01266958-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01267065-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01267139-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01267784-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01268248-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01268417-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01271202-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01271450-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01271471-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01274922-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01292218-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01295413-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01296697-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01317418-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01329420-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01341835-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01341836-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01355876-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01368139-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01378563-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01384784-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01394942-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01401898-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01416419-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01417477-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01417868-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01430544-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01432861-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01433501-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01454327-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01458428-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01458458-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01463254-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01487920-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01489149-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01494655-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01525857-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01553850-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01574048-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01574530-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01583876-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01625495-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01625536-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01640275-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01640921-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01640926-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01644744-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01681422-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01721973-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01816653-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01816850-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01829045-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01831959-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01832544-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01839375-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01840168-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01847231-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01847241-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01848655-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01866675-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01905510-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01914179-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01920929-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01924933-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01929760-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01930488-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01930930-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01932997-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01933773-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01935385-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01935388-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01944899-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01968294-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01968295-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01991442-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01997840-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-01997841-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02000919-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02004788-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02004789-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02007381-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02008132-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02098739-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02150865-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02151370-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02161666-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02165697-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02169109-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02196458-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02202283-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02213007-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02226355-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02383774-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02445892-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02483122-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02483552-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02512685-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02528450-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02528453-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02528641-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02531377-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02531716-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02534528-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02553580-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02585265-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02589389-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02590694-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02591980-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02594451-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02595023-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02598603-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02601629-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02605154-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02609194-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02617453-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02633111-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02655468-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02655717-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02656637-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02659607-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02659608-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02663578-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02663795-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02671560-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02675890-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02743408-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02789732-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02789733-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02794540-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02798465-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02905540-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02912306-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02915513-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-02939262-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03146977-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03158099-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03163405-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03215314-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03228240-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03240517-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03300162-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03396874-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03441622-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03575865-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03576611-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03590769-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03595626-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03604145-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-03903566-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04005475-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04097722-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04197901-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04197911-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04206650-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04282216-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04286976-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04387468-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04399831-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04403662-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04411503-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04414837-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04429402-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04447162-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04485851-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04525361-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04578865-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04581838-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04600939-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04601346-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04646891-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04659062-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04708885-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04711385-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04712025-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04712452-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04716268-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04723694-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04731128-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04739359-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04740697-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04750149-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04750800-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04758973-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04760466-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04760568-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04760594-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04760611-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04760615-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04760620-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04760628-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04760636-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04760755-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04760776-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04760790-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762088-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762103-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762129-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762166-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762170-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762208-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762211-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762220-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762221-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762224-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762230-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762233-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762373-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762552-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762798-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04762838-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04784863-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04798953-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04806202-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04853524-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04906138-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04949495-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04958461-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-04960295-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05033487-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05075945-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05077824-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05118261-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05120947-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05120948-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05120949-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05122403-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05122793-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05162999-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05163103-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05167271-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05203822-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05204072-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05221343-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05221619-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05227439-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05252304-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05265090-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05295003-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05305507-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05321516-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05324334-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05326285-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05326291-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05326295-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05328678-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05328724-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05328725-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05328726-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05334052-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05334053-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05334463-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05334475-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05335768-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05377662-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05388097-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05390505-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05395472-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05397714-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05399061-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05407639-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05410667-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05420874-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05420882-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05434745-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05435731-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05435998-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05451633-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05455623-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05464385-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05464515-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05464737-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05467323-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/HTS1710-05472863-01.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/molecules/UDX.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/receptor/.gitkeep" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/receptor/XT1_6EJ7.pdb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/receptor/XT1_6RJ7.pdb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/reference/UDX.mol2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_reference_pH63/campaign_config.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_reference_pH63/grids/.gitkeep" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_reference_pH63/molecules/.gitkeep" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_reference_pH63/molecules/UDX_control.sdf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_reference_pH63/receptor/.gitkeep" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_reference_pH63/receptor/XT1_6EJ7.pdb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_reference_pH63/reference/UDX.mol2" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/01_src/molecular_docking/m07_cross_engine/cross_engine_comparison.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/02_scripts/07a_cross_engine_comparison.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/03_configs/07a_cross_engine_comparison.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/campaign_config.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/DIOS_1_mcule.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/DIOS_1_pubchem.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V1_bridge_8_mcule.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V1_bridge_8_pubchem.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V2_core_8_mcule.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V2_core_8_pubchem.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V3_nucleotide_8_mcule.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V4_bidentate_8_mcule.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V4_bidentate_8_pubchem.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V5_extended_8_mcule.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V5_extended_8_pubchem.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V6_full_pubchem.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V7_best7_mcule.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V7_best7_pubchem.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V7_best7_v2_mcule.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V7_best7_v2_pubchem.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V8_strategyB_bidentate_7_mcule.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/pharmit_V8_strategyB_bidentate_7_pubchem.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/receptor/.gitkeep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/reference/Diosmine.mol2" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/selections/DIOS_pharmit_selection_v1.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_similarity_pH63_1/campaign_config.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_similarity_pH63_1/grids/.gitkeep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_similarity_pH63_1/molecules/.gitkeep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_similarity_pH63_1/molecules/Conformer3D_COMPOUND_CID_5281613.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_similarity_pH63_1/molecules/PubChem_search_records.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_similarity_pH63_1/receptor/.gitkeep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_similarity_pH63_1/receptor/XT1_6EJ7.pdb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_similarity_pH63_1/reference/DIOSMINE.mol2" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_namiki_pH63/campaign_config.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_namiki_pH63/grids/.gitkeep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_namiki_pH63/molecules/.gitkeep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_namiki_pH63/receptor/.gitkeep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_namiki_pH63/receptor/XT1_6EJ7.pdb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_namiki_pH63/receptor/pharmit_XT1_SD1.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_namiki_pH63/reference/SD1.mol2" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/campaign_config.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/grids/.gitkeep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules/.gitkeep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_1.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_1.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_10.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_10.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_10_molport.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_1_molport.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_2.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_2.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_2_molport.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_3.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_3.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_3_molport.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_4.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_4.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_4_molport.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_5.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_5.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_5_molport.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_6.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_6.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_6_molport.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_7.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_7.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_7_molport.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_8.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_8.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_8_molport.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_9.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_9.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/molecules_results/SD1_9_molport.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/receptor/.gitkeep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/receptor/XT1_6EJ7.pdb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/receptor/pharmit_XT1_SD1.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/reference/SD1.mol2" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/reference/SD1.pdb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/selections/SD1_pharmit_pharmacophore_v1.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/selections/SD1_pharmit_selection_v1.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/SD1_pharmit_pH63_SD1_1/selections/SD1_pharmit_selection_v2.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/selections/Namiki_hit_validation_v2.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/selections/UDX_druglikeness_3.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/selections/namiki_druglikeness_v1.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_pH63/selections/namiki_pharmacophore_v1.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/grids/.gitkeep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules/.gitkeep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules/uracil_ribose_1.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules/uracil_ribose_2.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules/uracil_ribose_3.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules/uracil_ribose_4.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules/uracil_ribose_5.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules/xylose_ribose_1.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules/xylose_ribose_2.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules/xylose_ribose_3.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules/xylose_ribose_4.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules/xylose_ribose_5.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/uracil_ribose_1.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/uracil_ribose_1.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/uracil_ribose_2.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/uracil_ribose_2.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/uracil_ribose_3.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/uracil_ribose_3.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/uracil_ribose_4.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/uracil_ribose_4.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/uracil_ribose_5.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/uracil_ribose_5.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/xylose_ribose_1.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/xylose_ribose_1.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/xylose_ribose_2.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/xylose_ribose_2.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/xylose_ribose_3.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/xylose_ribose_3.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/xylose_ribose_4.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/xylose_ribose_4.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/xylose_ribose_5.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules_results/xylose_ribose_5.sdf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/receptor/.gitkeep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/receptor/XT1_6EJ7.pdb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/selections/Pharmit_UDX_hit_validation_v2.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/selections/druglikeness_v3.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/selections/pharmacophore_v1.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_pH63/selections/refmol_pharmacophore_v1.xlsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m04_dock6_analysis/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m04_dock6_analysis/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m04_dock6_analysis/campaign_report.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m04_dock6_analysis/campaign_report.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m04_dock6_analysis/footprint_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m04_dock6_analysis/footprint_analysis.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/04a_score_ranking.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/04a_score_ranking.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/04b_footprint_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/04b_footprint_analysis.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/04c_binding_modes.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/04c_binding_modes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/04d_contact_mapping.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/04d_contact_mapping.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/04e_campaign_report.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/04e_campaign_report.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/02_scripts/05f_contact_mapping.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/05f_contact_mapping.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/03_configs/04a_score_ranking.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/03_configs/04a_score_ranking.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/03_configs/04b_footprint_analysis.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/03_configs/04b_footprint_analysis.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/03_configs/04c_binding_modes.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/03_configs/04c_binding_modes.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/03_configs/04d_contact_mapping.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/03_configs/04d_contact_mapping.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/03_configs/04e_campaign_report.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/03_configs/04e_campaign_report.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/03_configs/05f_contact_mapping.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/03_configs/05f_contact_mapping.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/footprint_rescore.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m01_docking/footprint_rescore.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/01_src/molecular_docking/m05_gnina_analysis/campaign_report.py" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m05_gnina_analysis/campaign_report.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/02_scripts/01a_antechamber_preparation.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/01a_antechamber_preparation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/02_scripts/01c_dock6_run.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/01c_dock6_run.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/02_scripts/01d_footprint_rescore.py" beforeDir="false" afterPath="$PROJECT_DIR$/02_scripts/01d_footprint_rescore.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/03_configs/01d_footprint_rescore.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/03_configs/01d_footprint_rescore.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_2_pH63/campaign_config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/campaign_config.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_2_pH63/grids/.gitkeep" beforeDir="false" afterPath="$PROJECT_DIR$/01_src/molecular_docking/m07_cross_engine/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_2_pH63/molecules/.gitkeep" beforeDir="false" afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/grids/.gitkeep" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_2_pH63/molecules/UDX_control.sdf" beforeDir="false" afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/molecules/UDX_control.sdf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_2_pH63/receptor/.gitkeep" beforeDir="false" afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/molecules/.gitkeep" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_2_pH63/receptor/XT1_6EJ7.pdb" beforeDir="false" afterPath="$PROJECT_DIR$/04_data/campaigns/DIOS_pharmit_pH63_1/receptor/XT1_6EJ7.pdb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_2_pH63/receptor/XT1_6RJ7.pdb" beforeDir="false" afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/receptor/XT1_6RJ7.pdb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/04_data/campaigns/UDX_namiki_2_pH63/reference/UDX.mol2" beforeDir="false" afterPath="$PROJECT_DIR$/04_data/campaigns/UDX_pharmit_UDX_1_pH63/reference/UDX.mol2" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/run_pipeline.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run_pipeline.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -554,36 +183,36 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "Python.python install_molecular_docking.py.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "WebServerToolWindowPanel.toolwindow.highlight.mappings": "true",
-    "WebServerToolWindowPanel.toolwindow.highlight.symlinks": "true",
-    "WebServerToolWindowPanel.toolwindow.show.date": "false",
-    "WebServerToolWindowPanel.toolwindow.show.permissions": "false",
-    "WebServerToolWindowPanel.toolwindow.show.size": "false",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "C:/Users/benja/PycharmProjects/molecular_docking/04_data/campaigns",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.python install_molecular_docking.py.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.highlight.mappings&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.highlight.symlinks&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.date&quot;: &quot;false&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.permissions&quot;: &quot;false&quot;,
+    &quot;WebServerToolWindowPanel.toolwindow.show.size&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/benja/PycharmProjects/molecular_docking&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\04_data\campaigns\DIOS_similarity_pH63_1\molecules" />
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking\04_data\campaigns" />
-      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\03_configs" />
-      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\02_scripts" />
-      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\01_src\molecular_docking\m06_pharmit" />
-      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\01_src\molecular_docking\m03_crystal_analysis" />
+      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\05_results" />
+      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\04_data\campaigns\DIOS_pharmit_pH63_1\selections" />
+      <recent name="C:\Users\benja\PycharmProjects\molecular_docking\04_data\campaigns\DIOS_pharmit_pH63_1\molecules" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\benja\PycharmProjects\molecular_docking\04_data\campaigns\SD1_reference_pH63\molecules" />
@@ -667,7 +296,21 @@
       <workItem from="1774018986702" duration="39338000" />
       <workItem from="1774178704568" duration="6760000" />
       <workItem from="1774208160789" duration="19617000" />
-      <workItem from="1774276667779" duration="32229000" />
+      <workItem from="1774276667779" duration="50452000" />
+      <workItem from="1774446131714" duration="67710000" />
+      <workItem from="1774697406655" duration="11249000" />
+      <workItem from="1774809052137" duration="16566000" />
+      <workItem from="1774886986203" duration="20603000" />
+      <workItem from="1775094403346" duration="2755000" />
+      <workItem from="1775134696026" duration="22772000" />
+      <workItem from="1775488312531" duration="4877000" />
+      <workItem from="1775567146585" duration="9730000" />
+      <workItem from="1775769059789" duration="3058000" />
+      <workItem from="1775953991412" duration="8417000" />
+      <workItem from="1776441221353" duration="19327000" />
+      <workItem from="1776776245647" duration="19210000" />
+      <workItem from="1777242310838" duration="139000" />
+      <workItem from="1777394437472" duration="323000" />
     </task>
     <task id="LOCAL-00001" summary="Resolve conflicts: keep local PC version">
       <option name="closed" value="true" />
@@ -765,7 +408,15 @@
       <option name="project" value="LOCAL" />
       <updated>1774229964148</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="Resolve conflicts: keep local PC version">
+      <option name="closed" value="true" />
+      <created>1774369319793</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1774369319793</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
