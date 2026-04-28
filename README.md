@@ -1,16 +1,22 @@
 # MOLECULAR_DOCKING
 
-Pipeline de docking molecular con DOCK6. Produce outputs compatibles con **dock2profile**.
+Pipeline de virtual screening con dos engines complementarios: **DOCK6** (físico, basado en grids) y **GNINA** (Vina + CNN scoring). Produce outputs compatibles con **dock2profile**.
+
+---
 
 ## Requisitos
 
 | Dependencia | Instalación | Notas |
 |---|---|---|
-| Python 3.9-3.12 | conda | |
-| RDKit, OpenBabel, AmberTools | conda | Via `environment.yaml` |
+| Python 3.9-3.12 | conda | Vía `environment.yaml` |
+| RDKit, OpenBabel, AmberTools | conda | Cheminformática + cargas AM1-BCC |
+| scikit-learn | conda | Clustering y hotspots (m05) |
 | PDB2PQR | pip | Protonación pH-aware del receptor |
-| **DOCK6** | Manual | Licencia académica gratuita de [UCSF](https://dock.compbio.ucsf.edu/DOCK_6/index.htm) |
-| **ChimeraX** | Manual | [Descargar](https://www.cgl.ucsf.edu/chimerax/download.html) — necesario para preparar el receptor |
+| **DOCK6** | Manual | Licencia académica gratuita de [UCSF](https://dock.compbio.ucsf.edu/DOCK_6/index.htm) — engine 01x |
+| **ChimeraX** | Manual | [Descargar](https://www.cgl.ucsf.edu/chimerax/download.html) — necesario para preparar el receptor (00b) |
+| **GNINA** | Manual | [github.com/gnina/gnina](https://github.com/gnina/gnina) — engine 02x; CUDA recomendado para GPU |
+
+---
 
 ## Instalación
 
@@ -32,139 +38,176 @@ bash check_dependencies.sh
 
 ### DOCK6
 
-DOCK6 requiere licencia académica gratuita. Después de obtenerla:
+Requiere licencia académica gratuita. Tras obtenerla:
 
 ```bash
-# Compilar e instalar en /opt/dock6/
+# Compilar e instalar
 tar -xzf dock.6.X.tar.gz
 cd dock6
 ./configure gnu
 make
 
-# Agregar al PATH (en ~/.bashrc)
-export PATH=/opt/dock6/bin:$PATH
+# Configurar entorno (en ~/.bashrc o ~/.profile)
+export DOCK_HOME=/opt/dock6           # raíz de la instalación
+export PATH=$DOCK_HOME/bin:$PATH
 ```
+
+El pipeline localiza los archivos de parámetros (`vdw_AMBER_parm99.defn`, `flex.defn`, `flex_drive.tbl`) en este orden:
+
+1. `$DOCK_HOME / $DOCK6_HOME / $DOCK_BASE` (env vars)
+2. `dirname(which dock6)/../parameters/`
+3. Rutas comunes: `/opt/dock6`, `/usr/local/dock6`, `~/dock6`, `~/software/dock6`
 
 ### ChimeraX
 
-Descargar desde https://www.cgl.ucsf.edu/chimerax/download.html e instalar. El pipeline busca el binario en `/usr/bin/chimerax-daily`, luego `chimerax` en PATH.
+Descargar e instalar desde [cgl.ucsf.edu/chimerax](https://www.cgl.ucsf.edu/chimerax/download.html). El pipeline busca el binario en `chimerax-daily` o `chimerax` en PATH.
+
+### GNINA
+
+Binario standalone (incluye Vina + CNN scoring entrenado). Soporta CPU y GPU (CUDA):
+
+```bash
+# Opción 1 — descargar binario precompilado
+wget https://github.com/gnina/gnina/releases/latest/download/gnina
+chmod +x gnina && sudo mv gnina /usr/local/bin/
+
+# Opción 2 — compilar desde fuente (ver repo upstream)
+```
+
+GPU acelera 02b ~10-50x dependiendo del hardware. Si no hay GPU disponible, GNINA cae a CPU automáticamente.
+
+---
 
 ## Estructura del proyecto
 
 ```
 molecular_docking/
 ├── 01_src/molecular_docking/       Core modules (lógica, sin CLI)
-│   ├── m00_preparation/
-│   │   ├── molecule_parser.py          00a — parseo de moléculas
-│   │   ├── receptor_preparation.py     00b — receptor → mol2 DOCK6-ready
-│   │   ├── ionization_profiling.py     00c — protonación de ligandos al pH
-│   │   └── binding_site_definition.py  00d — recorte del receptor (opcional)
-│   ├── m01_docking/                    DOCK6 engine
-│   │   ├── antechamber_preparation.py  01a — mol2 con cargas AM1-BCC
-│   │   ├── grid_generation.py          01b — DMS → spheres → grids
-│   │   ├── dock6_runner.py             01c — dock6 por molécula
-│   │   └── score_collector.py          01d — parseo de scores → Excel
-│   └── m02_vina/                       Vina engine
-│       ├── vina_preparation.py         02a — receptor/ligandos → PDBQT
-│       ├── vina_runner.py              02b — Vina/Vina-GPU docking
-│       └── vina_score_collector.py     02c — scores → CSV/Excel
-├── 02_scripts/                     CLI scripts (argparse + YAML → core)
+│   ├── m00_preparation/            Preparación compartida (00a-00d)
+│   ├── m01_docking/                DOCK6 engine (01a-01e)
+│   ├── m02_gnina/                  GNINA engine (02a-02c)
+│   ├── m04_dock6_analysis/         Análisis DOCK6 (04a-04e)
+│   ├── m05_gnina_analysis/         Análisis GNINA (05a-05g)
+│   └── m07_cross_engine/           Comparación cruzada (07a)
+├── 02_scripts/                     CLI wrappers (argparse + YAML → core)
 ├── 03_configs/                     YAML por módulo (parámetros algorítmicos)
 ├── 04_data/campaigns/              Campañas (receptor + moléculas + grids)
-│   └── example_campaign/
-│       ├── campaign_config.yaml        Fuente de verdad de la campaña
-│       ├── receptor/                   PDB del receptor
-│       └── molecules/                  Moléculas de entrada
-├── 05_results/                     Outputs por campaña/módulo
+│   └── <campaign_id>/
+│       ├── campaign_config.yaml    Fuente de verdad de la campaña
+│       ├── receptor/               PDB del receptor
+│       ├── molecules/              Moléculas a dockear (SDF/CSV/SMILES)
+│       ├── reference/              Ligando de referencia (cristalográfico)
+│       └── grids/                  Pre-existentes (opcional; 01b los genera)
+├── 05_results/                     Outputs por campaña/módulo (gitignored)
 ├── environment.yaml
 ├── pyproject.toml
-└── check_dependencies.sh
+├── check_dependencies.sh
+└── run_pipeline.sh
 ```
+
+### Convención de dos capas
+
+Cada módulo tiene exactamente dos archivos:
+1. **Core** (`01_src/.../module.py`): lógica pura, recibe paths/dicts, devuelve resultados.
+2. **Script** (`02_scripts/module.py`): wrapper CLI que mergea YAML config + campaign_config + overrides y llama al core.
+
+---
 
 ## Flujo del pipeline
 
 ```
-Shared preparation:
-00a molecule_parser       → unique_molecules.csv + .sdf
-00b receptor_preparation  → rec_charged.mol2 + rec_noH.pdb
-00c ionization_profiling  → SDF protonados por pH
-00d binding_site_def      → rec_noH_site.pdb (opcional)
+Shared preparation (00x):
+  00a  Molecule parser              → unique_molecules.csv + .sdf
+  00b  Receptor preparation         → rec_charged.mol2 + rec_noH.pdb
+  00c  Ionization profiling         → SDF protonados al pH de docking
+  00d  Binding site definition      → rec_noH_site.pdb (opcional)
 
-DOCK6 engine:
-01a antechamber           → mol2 con AM1-BCC charges
-01b grid_generation       → DMS, spheres, box, grid.nrg/bmp
-01c dock6_run             → scored mol2 por molécula
-01d score_collection      → Excel compatible dock2profile
+DOCK6 engine (01x):
+  01a  Antechamber preparation      → mol2 con cargas AM1-BCC + Sybyl types
+  01b  Grid generation              → DMS, spheres, box, grid.nrg/bmp
+  01c  DOCK6 docking                → scored mol2 por molécula
+  01d  Footprint re-scoring         → mol2 con descomposición por residuo
+  01e  Score collection             → Excel compatible dock2profile
 
-Vina engine:
-02a vina_preparation      → receptor.pdbqt + ligandos PDBQT
-02b vina_runner           → Vina/Vina-GPU docking
-02c vina_score_collector  → scores CSV/Excel
+GNINA engine (02x):
+  02a  GNINA preparation            → receptor.pdbqt + ligandos PDBQT
+  02b  GNINA docking                → poses + CNN affinity
+  02c  GNINA score collection       → CSV/Excel
+
+DOCK6 analysis (04x):
+  04a  Score ranking                → ranking compuesto multiplicativo
+  04b  Footprint analysis           → consistencia residuo-residuo
+  04c  Binding modes                → clusters de poses
+  04d  Contact mapping              → contactos receptor-ligando
+  04e  Campaign report              → Excel + plots resumen
+
+GNINA analysis (05x):
+  05a  Parse & fragment             → parseo + fragmentación BRICS
+  05b  Fragment clustering          → DBSCAN sobre fragmentos
+  05c  Score decomposition          → contribución por fragmento
+  05d  Binding site hotspots        → hotspots por DBSCAN espacial
+  05e  Structure export             → mejores poses como mol2/pdb
+  05f  Contact mapping              → contactos (consume receptor PDB)
+  05g  Campaign report              → Excel + plots resumen
+
+Cross-engine (07x, requiere ambos engines):
+  07a  Cross-engine comparison      → consensus DOCK6 ↔ GNINA
+  07b  Hit export                   → exportación final de hits
 ```
+
+---
 
 ## Uso
 
 ### 1. Crear campaña
 
 ```bash
-cp -r 04_data/campaigns/example_campaign 04_data/campaigns/mi_campana
+mkdir -p 04_data/campaigns/mi_campana/{receptor,molecules,reference,grids,selections}
+cp 04_data/campaigns/<campaña_existente>/campaign_config.yaml 04_data/campaigns/mi_campana/
 ```
 
-Editar `campaign_config.yaml` con el receptor, moléculas, y pH de docking.
+Editar `campaign_config.yaml` con receptor, moléculas, pH y sitio de unión.
 
-### 2. Correr pipeline
-
-Desde la raíz del proyecto (o como Run Configurations en PyCharm):
+### 2. Correr pipeline completo
 
 ```bash
-# === Shared preparation ===
+# Ambos engines, todos los módulos
+bash run_pipeline.sh mi_campana
 
-# 00a — Parsear moléculas
-python 02_scripts/00a_molecule_parser.py --config 03_configs/00a_molecule_parser.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
+# Solo DOCK6
+bash run_pipeline.sh mi_campana dock6
 
-# 00b — Preparar receptor (ChimeraX + PDB2PQR)
-python 02_scripts/00b_receptor_preparation.py --config 03_configs/00b_receptor_preparation.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
+# Solo GNINA
+bash run_pipeline.sh mi_campana gnina
 
-# 00c — Protonar ligandos
-python 02_scripts/00c_ionization_profiling.py --config 03_configs/00c_ionization_profiling.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
-
-# 00d — Binding site definition (recorte del receptor)
-python 02_scripts/00d_binding_site_definition.py --config 03_configs/00d_binding_site_definition.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
-
-# === DOCK6 engine ===
-
-# 01a — Antechamber (AM1-BCC charges)
-python 02_scripts/01a_antechamber_preparation.py --config 03_configs/01a_antechamber_preparation.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
-
-# 01b — Generar grids
-python 02_scripts/01b_grid_generation.py --config 03_configs/01b_grid_generation.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
-
-# 01c — DOCK6 docking
-python 02_scripts/01c_dock6_run.py --config 03_configs/01c_dock6_run.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
-
-# 01d — DOCK6 score collection
-python 02_scripts/01d_score_collection.py --config 03_configs/01d_score_collection.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
-
-# === Vina engine ===
-
-# 02a — Vina preparation (PDBQT conversion + binding box)
-python 02_scripts/02a_vina_preparation.py --config 03_configs/02a_vina_preparation.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
-
-# 02b — Vina docking
-python 02_scripts/02b_vina_runner.py --config 03_configs/02b_vina_runner.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
-
-# 02c — Vina score collection
-python 02_scripts/02c_vina_score_collector.py --config 03_configs/02c_vina_score_collector.yaml --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
-
-# === Or run everything at once ===
-bash run_pipeline.sh mi_campana              # both engines
-bash run_pipeline.sh mi_campana dock6        # DOCK6 only
-bash run_pipeline.sh mi_campana vina         # Vina only
+# Rango específico (ej: resumir desde 01c hasta 01e)
+bash run_pipeline.sh mi_campana dock6 01c 01e
 ```
 
-### PyCharm Run Configuration
+### 3. Correr módulos individuales
 
-Para cada módulo crear un Run Configuration:
+Todos los scripts siguen el mismo patrón:
+
+```bash
+python 02_scripts/<modulo>.py \
+    --config 03_configs/<modulo>.yaml \
+    --campaign 04_data/campaigns/mi_campana/campaign_config.yaml
+```
+
+### 4. Background runs (servidor)
+
+```bash
+mkdir -p logs
+
+# Pipeline completo
+nohup bash run_pipeline.sh mi_campana both > logs/mi_campana.log 2>&1 &
+
+# Monitoreo
+jobs -l
+tail -f logs/mi_campana.log
+```
+
+### PyCharm Run Configurations
 
 | Campo | Valor |
 |---|---|
@@ -173,37 +216,60 @@ Para cada módulo crear un Run Configuration:
 | Working directory | Raíz del proyecto |
 | Python interpreter | `molecular_docking_env` |
 
-## Configuración
+---
 
-Cada campaña se define en `campaign_config.yaml`. Los parámetros clave:
+## Configuración de campaña
+
+`campaign_config.yaml` es la fuente de verdad. Ejemplo mínimo:
 
 ```yaml
 campaign_id: "mi_campana"
-docking_ph: 7.2
+description: "Cribado virtual de N compuestos contra <target>"
 
 receptor:
   pdb: "receptor/mi_receptor.pdb"
   protonation:
     enabled: true
-    tool: "pdb2pqr"       # pdb2pqr | chimerax | obabel
+    tool: "pdb2pqr"          # pdb2pqr | chimerax | obabel
+
+docking_ph: 7.2
 
 molecules:
   input_file: "molecules/"
   protonation:
-    tool: "obabel"        # obabel | dimorphite_dl
+    enabled: true
+    tool: "obabel"           # obabel | dimorphite_dl
 
 grids:
   generate: true
   binding_site:
     method: "reference_ligand"
-    reference_mol2: "molecules/ligando_cristalografico.mol2"
-    radius: 10.0
+    reference_mol2: "reference/ligando_cristal.mol2"
+    radius: 6.0
 ```
+
+Los YAML en `03_configs/` controlan solo parámetros algorítmicos (exhaustiveness, charge method, conformer strategy, etc.).
+
+---
 
 ## Notas técnicas
 
-**DOCK6 y el límite de 80 caracteres.** Los programas Fortran de DOCK6 (sphgen, showbox) truncan paths a ~80 chars. El pipeline usa symlinks y filenames cortos automáticamente — no necesitas preocuparte de esto.
+**Límite de 80 caracteres en DOCK6.** Los programas Fortran de DOCK6 (sphgen, showbox) truncan paths a ~80 chars. El pipeline usa symlinks y filenames cortos automáticamente.
 
-**Receptor preparation.** El módulo 00b usa ChimeraX para generar el mol2 del receptor con Sybyl atom types y AMBER ff14SB charges. Si usas la estrategia `pdb2pqr`, PDB2PQR+PROPKA predicen pKa por residuo antes de que ChimeraX asigne las cargas.
+**SYBYL atom types obligatorios.** DOCK6 flexible docking requiere SYBYL (no GAFF), si no cae silenciosamente a rigid docking. `01a_antechamber_preparation` lo enforce.
 
-**Coordenadas cristalográficas.** Si tienes un ligando co-cristalizado, asegúrate de usar las coordenadas extraídas del PDB (no regeneradas desde SMILES) para `binding_site.reference_mol2`.
+**Cargas AMBER ff14SB en receptor.** El módulo `00b_receptor_preparation` genera el mol2 del receptor con Sybyl atom types y AMBER ff14SB charges vía ChimeraX. Si la estrategia es `pdb2pqr`, PDB2PQR+PROPKA predicen pKa por residuo antes de la asignación de cargas.
+
+**Coordenadas cristalográficas.** Para `binding_site.reference_mol2`, usar coordenadas extraídas del PDB (no regeneradas desde SMILES) para definir el sitio de unión correctamente.
+
+---
+
+## Testing
+
+```bash
+pytest                                              # smoke tests completos
+pytest tests/test_pipeline.py::TestGridGeneration   # una clase
+pytest -k "test_parse_vina_output"                  # un test
+```
+
+Los tests no requieren DOCK6/ChimeraX/GNINA instalados; verifican imports y lógica básica.

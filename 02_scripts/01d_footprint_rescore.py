@@ -110,7 +110,8 @@ def main():
         return 1
 
     # --- Params ---
-    dock6_home = params.get("dock6_home", "/opt/dock6")
+    # dock6_home: None/null = let core module autodetect ($DOCK_HOME, etc.)
+    dock6_home = params.get("dock6_home") or None
     timeout_per_molecule = args.timeout or params.get("timeout_per_molecule", 300)
     log_level = args.log_level or params.get("log_level", "INFO")
     molecule_filter = [args.name] if args.name else None

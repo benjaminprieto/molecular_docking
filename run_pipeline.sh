@@ -93,8 +93,26 @@ if [ ! -f "$CAMPAIGN" ]; then
     exit 1
 fi
 
-# Receptor path (for 05d, 05e, 05f)
-RECEPTOR="04_data/campaigns/${CAMPAIGN_ID}/receptor/XT1_6EJ7.pdb"
+# Receptor path (for 05d, 05e, 05f) — read from campaign_config.yaml
+RECEPTOR_REL=$(python -c "
+import sys, yaml
+try:
+    with open('$CAMPAIGN') as f:
+        cfg = yaml.safe_load(f)
+    print(cfg.get('receptor', {}).get('pdb', ''))
+except Exception as e:
+    sys.stderr.write(f'ERROR reading receptor.pdb from $CAMPAIGN: {e}\n')
+    sys.exit(1)
+")
+if [ -z "$RECEPTOR_REL" ]; then
+    echo "ERROR: receptor.pdb not defined in $CAMPAIGN"
+    exit 1
+fi
+RECEPTOR="04_data/campaigns/${CAMPAIGN_ID}/${RECEPTOR_REL}"
+if [ ! -f "$RECEPTOR" ]; then
+    echo "ERROR: receptor file not found: $RECEPTOR"
+    exit 1
+fi
 
 # Module ordering
 declare -A MODULE_ORDER=(

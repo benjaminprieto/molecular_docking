@@ -47,46 +47,43 @@ class TestScoreCollector:
         assert callable(run_score_collection)
 
 
-class TestVinaPreparation:
+class TestGninaPreparation:
     def test_import(self):
-        from molecular_docking.m02_gnina.vina_preparation import run_vina_preparation
-        assert callable(run_vina_preparation)
+        from molecular_docking.m02_gnina.gnina_preparation import run_gnina_preparation
+        assert callable(run_gnina_preparation)
 
     def test_binding_box(self):
-        from molecular_docking.m02_gnina.vina_preparation import VinaBindingBox
-        box = VinaBindingBox(center_x=10.0, center_y=20.0, center_z=30.0,
-                             size_x=25.0, size_y=25.0, size_z=25.0)
+        from molecular_docking.m02_gnina.gnina_preparation import GninaBindingBox
+        box = GninaBindingBox(center_x=10.0, center_y=20.0, center_z=30.0,
+                              size_x=25.0, size_y=25.0, size_z=25.0)
         assert box.volume == 25.0 * 25.0 * 25.0
-        args = box.to_vina_args()
+        args = box.to_gnina_args()
         assert "--center_x" in args
         assert "10.000" in args
 
 
-class TestVinaRunner:
+class TestGninaRunner:
     def test_import(self):
-        from molecular_docking.m02_gnina.vina_runner import run_vina_docking
-        assert callable(run_vina_docking)
+        from molecular_docking.m02_gnina.gnina_runner import run_gnina_docking
+        assert callable(run_gnina_docking)
 
-    def test_parse_vina_output(self):
-        from molecular_docking.m02_gnina.vina_runner import parse_vina_output
+    def test_parse_gnina_output(self):
+        from molecular_docking.m02_gnina.gnina_runner import parse_gnina_output
         sample = """
-Scoring function : vina
-Detected 4 CPUs
-mode |   affinity | dist from best mode
-     | (kcal/mol) | rmsd l.b.| rmsd u.b.
------+------------+----------+----------
-   1       -8.320      0.000      0.000
-   2       -7.952      1.834      2.456
-   3       -7.128      2.103      4.221
+mode |   affinity | CNN score | CNN affinity
+-----+------------+-----------+--------------
+   1       -8.320      0.847       -7.920
+   2       -7.952      0.721       -7.450
+   3       -7.128      0.612       -6.880
 """
-        poses = parse_vina_output(sample)
+        poses = parse_gnina_output(sample)
         assert len(poses) == 3
-        assert poses[0]["affinity"] == -8.320
-        assert poses[1]["rmsd_lb"] == 1.834
+        assert poses[0]["vina_affinity"] == -8.320
+        assert poses[0]["cnn_score"] == 0.847
         assert poses[2]["mode"] == 3
 
 
-class TestVinaScoreCollector:
+class TestGninaScoreCollector:
     def test_import(self):
-        from molecular_docking.m02_gnina.vina_score_collector import run_vina_score_collection
-        assert callable(run_vina_score_collection)
+        from molecular_docking.m02_gnina.gnina_score_collector import run_gnina_score_collection
+        assert callable(run_gnina_score_collection)

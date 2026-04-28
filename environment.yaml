@@ -14,8 +14,11 @@
 # DEPENDENCIAS EXTERNAS (no conda/pip):
 #   - DOCK6:    licencia academica gratuita de UCSF
 #               https://dock.compbio.ucsf.edu/DOCK_6/index.htm
+#               (engine 01x; exportar DOCK_HOME=/ruta/a/dock6)
 #   - ChimeraX: https://www.cgl.ucsf.edu/chimerax/download.html
 #               (necesario para 00b receptor preparation)
+#   - GNINA:    https://github.com/gnina/gnina
+#               (engine 02x; binario standalone, requiere CUDA para GPU)
 #
 # =============================================================================
 
@@ -29,19 +32,21 @@ dependencies:
   # --- Python ---
   - python>=3.9,<3.13
 
-  # --- Core ---
+  # --- Core data / IO ---
   - pandas>=1.5
   - numpy>=1.23
-  - openpyxl>=3.0
-  - pyyaml>=6.0
-  - tqdm>=4.64
+  - openpyxl>=3.0          # m04/m05 campaign reports (xlsx)
+  - pyyaml>=6.0            # config loading
 
   # --- Cheminformatics ---
-  - rdkit>=2023.03.1
-  - openbabel>=3.1.1
+  - rdkit>=2023.03.1       # 00a parser, 00c ionization, 06 pharmit
+  - openbabel>=3.1.1       # provides `obabel` CLI used by 00b/00c/01a/06
 
   # --- Structural biology ---
-  - ambertools>=22.0
+  - ambertools>=22.0       # antechamber, parmchk2, reduce (01a)
+
+  # --- Analysis (m05 GNINA: clustering + hotspots) ---
+  - scikit-learn>=1.0
 
   # --- Testing ---
   - pytest>=7.0
@@ -50,4 +55,4 @@ dependencies:
   # --- pip-only ---
   - pip
   - pip:
-      - pdb2pqr>=3.6.0
+      - pdb2pqr>=3.6.0     # default protonator in 00b (CLI invoked via subprocess)

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "molecular_docking"
-version = "2.0.0"
-description = "DOCK6 molecular docking pipeline. Produces outputs compatible with dock2profile."
+version = "3.0.0"
+description = "Virtual screening pipeline (DOCK6 + GNINA). Outputs compatible with dock2profile."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9,<3.13"
@@ -16,6 +16,7 @@ authors = [
 keywords = [
     "molecular-docking",
     "dock6",
+    "gnina",
     "drug-discovery",
     "virtual-screening",
     "computational-chemistry",
@@ -33,20 +34,18 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
 ]
 
-# Core dependencies (pip-installable)
-# RDKit, OpenBabel, AmberTools -> install via conda (see environment.yaml)
+# Core Python dependencies (pip-installable).
+# RDKit, OpenBabel, AmberTools must come from conda (see environment.yaml).
 dependencies = [
     "pandas>=1.5.0",
     "numpy>=1.23.0",
     "openpyxl>=3.0.0",
     "pyyaml>=6.0",
-    "tqdm>=4.64.0",
+    "scikit-learn>=1.0",
+    "pdb2pqr>=3.6.0",
 ]
 
 [project.optional-dependencies]
-protonation = [
-    "pdb2pqr>=3.6.0",
-]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",

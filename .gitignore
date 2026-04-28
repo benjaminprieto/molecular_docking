@@ -1,5 +1,11 @@
-# Results (generated per-campaign)
+# Pipeline outputs (per-campaign, regenerable)
 05_results/
+logs/
+
+# Data campaigns: ignore all except the example campaign(s) we ship
+04_data/campaigns/*
+!04_data/campaigns/.gitkeep
+!04_data/campaigns/DIOS_similarity_pH63_1/
 
 # Python
 __pycache__/
@@ -9,8 +15,9 @@ __pycache__/
 dist/
 build/
 *.egg
+.pytest_cache/
 
-# IDE
+# IDE / editor
 .idea/
 .vscode/
 *.swp
@@ -21,15 +28,13 @@ build/
 .DS_Store
 Thumbs.db
 
-# DOCK6 temp files
+# DOCK6 stray temp files (when run outside 05_results/)
 OUTSPH
-temp*
 *.dms
 *.sph
 *.box
 grid.nrg
 grid.bmp
 
-# Logs (keep in 05_results, not in project root)
+# Stray logs at repo root (real logs go to logs/ or 05_results/)
 *.log
-!check_dependencies.sh

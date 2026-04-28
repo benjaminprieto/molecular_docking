@@ -30,6 +30,7 @@ Version: 2.0
 """
 
 import logging
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -159,9 +160,56 @@ def _create_symlink(target: str, link_path: Path) -> bool:
     return True
 
 
-def _find_dock6_params(dock6_home: str = "/opt/dock6") -> Dict[str, str]:
-    """Find DOCK6 parameter files."""
-    params_dir = Path(dock6_home) / "parameters"
+def _resolve_dock6_home(dock6_home: Optional[str] = None) -> str:
+    """
+    Resolve DOCK6 installation root.
+
+    Search order:
+      1. Explicit `dock6_home` arg (if provided and parameters/ exists)
+      2. $DOCK_HOME, $DOCK6_HOME, $DOCK_BASE env vars
+      3. Relative to `dock6` binary on PATH (../parameters)
+      4. Common install paths (/opt/dock6, /usr/local/dock6, ~/dock6, ...)
+    """
+    candidates: List[Path] = []
+
+    if dock6_home:
+        candidates.append(Path(dock6_home))
+
+    for var in ("DOCK_HOME", "DOCK6_HOME", "DOCK_BASE"):
+        val = os.environ.get(var)
+        if val:
+            candidates.append(Path(val))
+
+    try:
+        which = subprocess.run(
+            ["which", "dock6"], capture_output=True, text=True, timeout=5,
+        ).stdout.strip()
+        if which:
+            candidates.append(Path(which).resolve().parent.parent)
+    except Exception:
+        pass
+
+    candidates.extend([
+        Path("/opt/dock6"),
+        Path("/usr/local/dock6"),
+        Path.home() / "dock6",
+        Path.home() / "software" / "dock6",
+        Path.home() / "programs" / "dock6",
+    ])
+
+    for c in candidates:
+        if (c / "parameters" / "vdw_AMBER_parm99.defn").exists():
+            return str(c)
+
+    # Last resort: return the explicit arg (or /opt/dock6) so error surfaces
+    # downstream with a clear path the user can verify.
+    return dock6_home or "/opt/dock6"
+
+
+def _find_dock6_params(dock6_home: Optional[str] = None) -> Dict[str, str]:
+    """Find DOCK6 parameter files (vdw, flex, flex_drive)."""
+    resolved = _resolve_dock6_home(dock6_home)
+    params_dir = Path(resolved) / "parameters"
     return {
         "vdw_defn_file": str(params_dir / "vdw_AMBER_parm99.defn"),
         "flex_defn_file": str(params_dir / "flex.defn"),
@@ -178,7 +226,7 @@ def run_footprint_rescore(
         output_dir: Union[str, Path],
         receptor_mol2: str,
         reference_mol2: str,
-        dock6_home: str = "/opt/dock6",
+        dock6_home: Optional[str] = None,
         timeout_per_molecule: int = 300,
         molecule_filter: Optional[List[str]] = None,
         gbsa_hawkins: bool = False,

@@ -24,7 +24,13 @@
 # =============================================================================
 
 parameters:
-  dock6_home: "/opt/dock6"
+  # DOCK6 installation root (containing parameters/, bin/).
+  # Resolution order if null/missing:
+  #   1. $DOCK_HOME, $DOCK6_HOME, $DOCK_BASE
+  #   2. dirname(which dock6)/..
+  #   3. /opt/dock6, /usr/local/dock6, ~/dock6, ~/software/dock6
+  # Set explicitly to override autodetection.
+  dock6_home: null
   timeout_per_molecule: 300
 
   # ┌───────────────────────────────────────────────────────────────┐
