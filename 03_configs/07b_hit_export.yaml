@@ -1,0 +1,44 @@
+# =============================================================================
+# 07b Hit Export - Configuration
+# =============================================================================
+# Exports selected molecules as individual SDF files for hit_validation.
+#
+# INPUT:
+#   Selection Excel (selection_file, relative to campaign directory)
+#   gnina_scores.csv from 02c (auto-discovered)
+#
+# OUTPUT: 05_results/{campaign_id}/07b_hit_export/
+#   sdf/{name}.sdf           — protonated SDF per molecule
+#   hit_export_summary.csv   — export manifest
+#
+# Project: molecular_docking
+# Module: 07b
+# Version: 1.0
+# =============================================================================
+
+parameters:
+  # Path to selection Excel, relative to campaign directory.
+  # Must contain a column "Name" with PubChem IDs.
+  # Change this to switch between selections:
+  #   selections/druglikeness_v3.xlsx
+  #   selections/pharmacophore_v1.xlsx
+  selection_file: "selections/druglikeness_v3.xlsx"
+
+  log_level: "INFO"
+
+outputs:
+  subdir: "07b_hit_export"
+
+# =============================================================================
+# USAGE
+# =============================================================================
+# python 02_scripts/07b_hit_export.py \
+#     --config 03_configs/07b_hit_export.yaml \
+#     --campaign 04_data/campaigns/UDX_pharmit_UDX_1_pH63/campaign_config.yaml
+#
+# # Override selection from CLI:
+# python 02_scripts/07b_hit_export.py \
+#     --config 03_configs/07b_hit_export.yaml \
+#     --campaign 04_data/campaigns/UDX_pharmit_UDX_1_pH63/campaign_config.yaml \
+#     --selection selections/pharmacophore_v1.xlsx
+# =============================================================================
