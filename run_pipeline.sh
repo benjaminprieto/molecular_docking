@@ -13,32 +13,31 @@
 # Usage:
 #   bash run_pipeline.sh <campaign_id> [engine] [start] [stop]
 #
-# Examples:
-#   bash run_pipeline.sh XT1_hits                    # everything, both engines
-#   bash run_pipeline.sh XT1_hits dock6              # DOCK6 only
-#   bash run_pipeline.sh XT1_hits gnina              # GNINA only
-#   bash run_pipeline.sh XT1_hits both 01c 01e       # both engines, range
-#   bash run_pipeline.sh XT1_hits dock6 01c 01e      # DOCK6, range
+# Examples (using the bundled example campaign DIOS_similarity_pH63_1):
+#   bash run_pipeline.sh DIOS_similarity_pH63_1                # everything, both engines
+#   bash run_pipeline.sh DIOS_similarity_pH63_1 dock6          # DOCK6 only
+#   bash run_pipeline.sh DIOS_similarity_pH63_1 gnina          # GNINA only
+#   bash run_pipeline.sh DIOS_similarity_pH63_1 both  01c 01e  # both engines, range
+#   bash run_pipeline.sh DIOS_similarity_pH63_1 dock6 01c 01e  # DOCK6, range
 #
 # For nohup (background server runs):
 #   # Full pipeline, both engines
-#   nohup bash run_pipeline.sh XT1_hits both > logs/xt1_both.log 2>&1 &
-#   nohup bash run_pipeline.sh SD1_pharmit_pH63_SD1_1 both > logs/SD1_pharmit_pH63_SD1_full.log 2>&1 &
+#   nohup bash run_pipeline.sh DIOS_similarity_pH63_1 both  > logs/dios_both.log  2>&1 &
 #
 #   # Single engine, full run
-#   nohup bash run_pipeline.sh XT1_hits dock6 > logs/xt1_dock6.log 2>&1 &
-#   nohup bash run_pipeline.sh XT1_hits gnina > logs/xt1_gnina.log 2>&1 &
+#   nohup bash run_pipeline.sh DIOS_similarity_pH63_1 dock6 > logs/dios_dock6.log 2>&1 &
+#   nohup bash run_pipeline.sh DIOS_similarity_pH63_1 gnina > logs/dios_gnina.log 2>&1 &
 #
 #   # Resume after interruption (e.g. 01a done, continue from 01b)
-#   nohup bash run_pipeline.sh XT1_hits dock6 01b 04e > logs/xt1_dock6_from01b.log 2>&1 &
+#   nohup bash run_pipeline.sh DIOS_similarity_pH63_1 dock6 01b 04e > logs/dios_dock6_from01b.log 2>&1 &
 #
 #   # Analysis only (docking already finished)
-#   nohup bash run_pipeline.sh XT1_hits dock6 04a 04e > logs/xt1_dock6_analysis.log 2>&1 &
-#   nohup bash run_pipeline.sh XT1_hits gnina 05a 05g > logs/xt1_gnina_analysis.log 2>&1 &
+#   nohup bash run_pipeline.sh DIOS_similarity_pH63_1 dock6 04a 04e > logs/dios_dock6_analysis.log 2>&1 &
+#   nohup bash run_pipeline.sh DIOS_similarity_pH63_1 gnina 05a 05g > logs/dios_gnina_analysis.log 2>&1 &
 #
 #   # Monitor running jobs
-#   jobs -l                    # list background jobs
-#   tail -f logs/xt1_dock6.log # follow progress
+#   jobs -l                     # list background jobs
+#   tail -f logs/dios_dock6.log # follow progress
 #
 # =============================================================================
 
@@ -77,9 +76,9 @@ if [ -z "$CAMPAIGN_ID" ]; then
     echo "  07a  Cross-Engine Comparison   (engine=both only)"
     echo ""
     echo "Examples:"
-    echo "  bash run_pipeline.sh XT1_hits                    # everything"
-    echo "  bash run_pipeline.sh XT1_hits dock6              # DOCK6 only"
-    echo "  bash run_pipeline.sh XT1_hits both 01c 01e       # range"
+    echo "  bash run_pipeline.sh DIOS_similarity_pH63_1            # everything"
+    echo "  bash run_pipeline.sh DIOS_similarity_pH63_1 dock6      # DOCK6 only"
+    echo "  bash run_pipeline.sh DIOS_similarity_pH63_1 both 01c 01e  # range"
     echo ""
     echo "Available campaigns:"
     ls -1 04_data/campaigns/ 2>/dev/null || echo "  (none)"
